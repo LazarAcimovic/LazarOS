@@ -53,15 +53,15 @@ Also, I would not be able to make this if I did not have a notion and knowledge 
 
 The application walkthrough is recorded in three parts:
 
-**Part 1
+** Part 1
 
 https://github.com/user-attachments/assets/34ba4dd8-b035-43e6-9215-363e8424f993
 
-**Part 2
+** Part 2
 
 https://github.com/user-attachments/assets/d95338ba-240b-4bec-ae26-45931ad40ebf
 
-**Part 3 
+** Part 3 
 
 https://github.com/user-attachments/assets/c7160e64-6d9c-4edd-8a6c-2dce64eceebd
 
