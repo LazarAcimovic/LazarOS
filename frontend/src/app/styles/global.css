@@ -585,6 +585,40 @@ body {
 
 .form-group__textarea { resize: vertical; }
 
+.form-group__input-wrap {
+  position: relative;
+}
+
+.form-group__input-wrap .form-group__input {
+  padding-right: 40px;
+}
+
+.form-group__eye {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.form-group__eye:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.form-group__eye svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .form-row {
   display: flex;
   gap: 12px;
