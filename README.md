@@ -53,16 +53,15 @@ Also, I would not be able to make this if I did not have a notion and knowledge 
 
 The application walkthrough is recorded in three parts:
 
-**Part 1 - Authentication & Today dashboard**
-https://github.com/user-attachments/assets/0f2c4353-8e9f-4ab1-8714-6682d4a7dd74
+**Part 1
 
+https://github.com/user-attachments/assets/34ba4dd8-b035-43e6-9215-363e8424f993
 
-
-**Part 2 - Creating, editing, completing & overdue behavior**
+**Part 2
 
 https://github.com/user-attachments/assets/d95338ba-240b-4bec-ae26-45931ad40ebf
 
-**Part 3 - Upcoming, All Tasks (search & filters), Archive & Settings**
+**Part 3 
 
 https://github.com/user-attachments/assets/c7160e64-6d9c-4edd-8a6c-2dce64eceebd
 
