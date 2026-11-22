@@ -1,0 +1,146 @@
+# Tech — stack, tooling, deployment
+
+## Section index
+
+> Agents: do not Read this file whole. `grep -n "^## " docs/Tech.md` for live line numbers,
+> then Read with `offset`/`limit`. No line numbers here on purpose.
+
+| Section | Title |
+|---|---|
+| 1 | Stack snapshot |
+| 2 | Database tooling |
+| 3 | Environment and configuration |
+| 4 | Running locally |
+| 5 | What's intentionally simple |
+
+## 1. Stack snapshot
+
+> verified at 82e2378
+
+Two deployable tiers in one repository:
+
+- `backend/` — Node.js + Express HTTP API.
+- `frontend/` — React + Vite SPA served by Vite in dev, served as a static build in production.
+
+Shared layer: none (no monorepo tooling, no shared packages).
+
+### Backend — installed
+
+From [backend/package.json](../backend/package.json):
+
+| Package | Version | Role |
+|---|---|---|
+| `express` | `^4.19.2` | HTTP framework |
+| `cors` | `^2.8.5` | CORS middleware |
+| `cookie-parser` | `^1.4.6` | Parses the `jwt` cookie into `req.cookies` |
+| `jsonwebtoken` | `^9.0.2` | Signs and verifies the JWT in the cookie |
+| `bcrypt` | `^5.1.1` | Password hashing (cost 10) |
+| `mssql` | `^11.0.1` | SQL Server driver, used via the `msnodesqlv8` sub-module |
+| `msnodesqlv8` | `^5.2.3` | Windows native SQL Server driver |
+| `zod` | `^3.23.8` | Request validation |
+| `dotenv` | `^16.4.5` | Loads `.env` on startup |
+| `nodemon` (dev) | `^3.1.4` | Reload-on-change dev loop |
+
+### Frontend — installed
+
+From [frontend/package.json](../frontend/package.json):
+
+| Package | Version | Role |
+|---|---|---|
+| `react`, `react-dom` | `^18.3.1` | UI |
+| `react-router-dom` | `^6.24.1` | Client-side routing |
+| `axios` | `^1.7.2` | HTTP client with `withCredentials: true` |
+| `zustand` | `^4.5.4` | Global state (auth, theme) |
+| `zod` | `^3.23.8` | Form validation |
+| `vite` (dev) | `^5.3.4` | Dev server and build tool |
+| `@vitejs/plugin-react` (dev) | `^4.3.1` | Vite React plugin |
+| `typescript` (dev) | `^5.5.3` | Type checker; strict mode on, see [tsconfig.json](../frontend/tsconfig.json) |
+
+### Deliberately not installed
+
+- **No ORM.** All DB access is raw parameterized T-SQL through the shared pool. Adding one is
+  out of scope (PRD §10). Mentioned in the README as a conscious choice.
+- **No test framework** in either tier. See §5 and the refactor campaign `refactor-02` for the
+  plan to add one.
+- **No linter or formatter.** No `eslint`/`prettier` config in either tier.
+- **No pre-commit tooling** before this documentation system (the hook in `.githooks/pre-commit`
+  runs only the docs check; see §4).
+
+## 2. Database tooling
+
+- **Driver:** `mssql` package imported as `mssql/msnodesqlv8.js` so it uses the native Windows
+  driver; see [backend/config/db.js:1](../backend/config/db.js).
+- **Connection:** single shared pool, created on first use and reused forever
+  ([db.js:12-25](../backend/config/db.js)). On failure, the promise is nulled so a later request
+  will retry.
+- **Connection string:** currently hardcoded for a specific developer machine
+  ([db.js:4-10](../backend/config/db.js)): ODBC Driver 17, server `DESKTOP-8R6Q0B4`, database
+  `LazarOS`, `Trusted_Connection=Yes`. This is Windows authentication. Moving it to env is
+  tracked as task `task-03`.
+- **Schema file:** [backend/db/schema.sql](../backend/db/schema.sql). Drop-and-recreate; no
+  migration framework. Documented in `DB.md` §5.
+- **Query style:** every call goes through `pool.request().input(...).query(sql)` — named
+  parameters, never string interpolation. This is the SQL-injection boundary (PRD §6).
+
+## 3. Environment and configuration
+
+### Backend env
+
+Loaded by `dotenv/config` at the top of [server.js:1](../backend/server.js).
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PORT` | HTTP port | `5000` |
+| `JWT_SECRET` | Required to sign and verify JWTs | — (crash on missing is implicit; `jsonwebtoken` throws) |
+| `NODE_ENV` | Toggles cookie `secure` flag and stack traces in error responses | — |
+
+There is no `.env.example` yet; see `task-03`.
+
+### Frontend env
+
+Loaded by Vite from [frontend/.env.development](../frontend/.env.development).
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `VITE_API_URL` | Base URL the axios client points at | `/api` (fallback in [apiClient.ts:6](../frontend/src/shared/api/apiClient.ts)) |
+
+Dev config sets it to `http://localhost:5000/api` so requests go cross-origin straight to the
+backend; CORS is wide open on `localhost:*` ([server.js:13-23](../backend/server.js)).
+
+## 4. Running locally
+
+From the repo root:
+
+```bash
+cd backend && npm install && npm run dev
+```
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Vite picks any free port starting at 5173; the backend CORS allowlist accepts any
+`http://localhost(:port)?` origin. To seed the database, run
+[backend/db/schema.sql](../backend/db/schema.sql) once in SSMS or `sqlcmd` against a SQL Server
+instance.
+
+The docs pre-commit hook is enabled with:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+That makes `scripts/check-docs.mjs` run on every commit that touches `docs/`, `AGENTS.md` or the
+script itself.
+
+## 5. What's intentionally simple
+
+- **No ORM** — see §1 above.
+- **No tests yet** — the full code base ships without automated tests. The task tracker and
+  the `refactor-02` campaign both reflect this; no document anywhere pretends tests exist.
+- **One shared SQL Server pool, Windows auth, drop-recreate schema.** This is a
+  single-developer, single-machine setup. Moving to env-based config and real migrations is a
+  tracked refactor campaign, not a hidden assumption.
+- **No rate limiting, no CSRF tokens, no account lockout.** `SameSite=Strict` on the JWT cookie
+  is the only CSRF mitigation ([generateToken.js:10](../backend/utils/generateToken.js)). PRD §6
+  documents the security posture; expanding it is out of scope.
