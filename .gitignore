@@ -4,3 +4,7 @@ build/
 .env
 *.log
 .DS_Store
+
+# Local-only snapshots of superseded docs
+docs/old/
+
