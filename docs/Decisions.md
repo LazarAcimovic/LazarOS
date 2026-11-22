@@ -169,3 +169,27 @@ server's offset — both worse than trusting the local-date string. Confirmed as
 **Lives in:** —
 **Why:** These are the "nobody asked, and there are none" answers that would otherwise read
 as silences; recording them as N/A keeps a later agent from inventing work.
+
+### D-015 — SQL Server → Postgres data cutover: native `.bak` as safety copy, portable export as the migration path, parity by counts + checksum
+
+**Decided:** 2026-11-22 · **Status:** Accepted
+**Answer:** The live SQL Server data is preserved across `refactor-04` by three deliberate
+choices:
+
+1. **Keep a native SQL Server `.bak`** of `LazarOS`, taken before the migration and stored
+   outside the repo. It is the untouched rollback copy — if the cutover goes wrong, restore it.
+2. **Migrate the rows via a portable, engine-neutral export** (per-table CSV of every
+   `profiles`/`tasks` row, all columns, nulls and soft-deleted rows included), not by replaying
+   the `.bak`. A `.bak` only restores into SQL Server, so it cannot carry data into Postgres; a
+   human-readable export can, and it can be inspected and diffed.
+3. **Prove nothing was lost** with per-table row counts **plus** a deterministic content
+   checksum — an ordered SHA-256 over canonically-encoded, primary-key-ordered rows. Counts
+   alone cannot catch a corrupted or truncated field; the checksum can. The canonical form is
+   defined to be reproducible on both engines (DB §7.3) so reconcile recomputes it against the
+   loaded Postgres data and compares to the manifest.
+
+**Lives in:** DB §7, Tech §2
+**Why:** The `.bak` is the strongest safety net but is engine-locked, so it cannot also be the
+migration vehicle; the export is portable but needs a tamper-evident parity test to be trusted;
+a checksum defined over an engine-neutral canonical form is the only way to assert byte-level
+fidelity across two different database engines.

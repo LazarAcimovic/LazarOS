@@ -128,3 +128,74 @@ Case table — one row per state the query must classify:
 
 **Every query that touches `tasks` additionally filters by `user_id = @user_id` and (except
 archive/restore) `is_deleted = 0`.** That pair is the data-isolation invariant (PRD §6).
+
+## 7. Data preservation across the engine migration
+
+The engine migration (campaign `refactor-04`) ports the schema and the demo seed from SQL Server
+to PostgreSQL but deliberately does **not** carry the live rows. Preserving the real data is a
+separate, auditable procedure, decided in D-015. This section is its home.
+
+### 7.1 What "preserved" means
+
+Preservation is **complete and faithful**: every row of `profiles` and `tasks` is carried across
+exactly as stored, with nothing filtered, de-duplicated, re-ordered in meaning, or altered. In
+particular the migration must keep:
+
+- **Soft-deleted rows** — `tasks` with `is_deleted = 1` are data, not garbage; they are the
+  user's Archive (§3, PRD §4.11) and are carried like any other row.
+- **`completed_at`** — including its `NULL` for never-completed tasks, distinct from an empty
+  value.
+- **Exact timestamps** — `created_at`, `updated_at`, `completed_at` to their full stored
+  `DATETIME2(7)` precision; no truncation to seconds or milliseconds.
+- **bcrypt hashes** — `profiles.password` is copied byte-for-byte; it is never re-hashed,
+  trimmed or re-encoded, or every user's login breaks.
+- **GUID identities** — `id` and `tasks.user_id` keep their exact values so the foreign-key
+  relationships and any external references stay valid.
+
+### 7.2 Procedure — backup, load, reconcile
+
+1. **Backup (before `refactor-04` touches anything).** Take a native SQL Server `.bak` of
+   `LazarOS` — the untouched safety copy you can always restore to — **and** a portable,
+   engine-neutral export (per-table CSV) of every `profiles` and `tasks` row, all columns, nulls
+   and soft-deleted rows included. Record a **manifest** (§7.3). Artifacts live outside the repo
+   because they contain real personal data and bcrypt hashes; their location and the script that
+   reproduces them are documented in Tech §2.
+2. **Load (after `refactor-04` R04.3 created the Postgres schema).** Insert the exported rows
+   into the migrated schema with identity-insert semantics — same `id`s, same timestamps, same
+   `is_deleted`. The demo seed (`refactor-04` R04.5) is for fresh and test databases only and is
+   not involved in the real-data cutover.
+3. **Reconcile.** Re-run the parity test (§7.3) against the loaded Postgres data and prove it
+   equals the manifest, table by table, before the cutover is considered done.
+
+### 7.3 Parity test — counts plus a content checksum
+
+Parity is proven two ways, both recorded in the manifest and both reproducible on either engine:
+
+- **Per-table row counts** — `profiles` and `tasks` each match exactly.
+- **A deterministic content checksum** — an ordered hash over *all* rows, so a single changed
+  byte in any field fails the check even when the counts agree.
+
+**Checksum definition (must be reproduced identically in Postgres during reconcile).**
+
+- **Row order.** Sort rows by the lowercased 36-character string form of the primary key `id`
+  (engine-neutral: `LOWER(CONVERT(char(36), id))` in SQL Server, `lower(id::text)` in Postgres).
+- **Field encoding.** For each column, in the fixed order below, emit one token: `N` for a SQL
+  `NULL`, otherwise `V` + the UTF-8 byte length of the value + `:` + the value. Length-prefixing
+  makes the stream unambiguous regardless of commas, quotes or newlines inside a value, and keeps
+  `NULL` distinct from the empty string.
+- **Value rendering.** `DATETIME2` as ISO-8601 to full stored precision (SQL Server style 126,
+  e.g. `2026-11-22T08:30:15.1234567`); `DATE` as `YYYY-MM-DD`; `UNIQUEIDENTIFIER` lowercased;
+  `BIT` as `0`/`1`; text columns verbatim.
+- **Hash.** Terminate each row with `\n`, feed the whole byte stream into one **SHA-256** hash;
+  the hex digest is the table checksum. The manifest's `overallChecksum` is the SHA-256 of
+  `profiles:<count>:<checksum>\ntasks:<count>:<checksum>\n`.
+
+Fixed column order for the checksum:
+
+- `profiles`: `id, first_name, last_name, email, password, created_at`
+- `tasks`: `id, user_id, title, description, due_date, priority, status, is_deleted, completed_at, created_at, updated_at`
+
+The manifest produced by the backup is the **source of truth for reconciliation**: records
+`generatedAt`, the source server/database, `checksumAlgorithm` (`SHA-256`), the canonical-form
+description, and for each table its `rowCount`, column list and `checksum`, plus the
+`overallChecksum`. Reconciliation passes only when the Postgres figures equal it exactly.
