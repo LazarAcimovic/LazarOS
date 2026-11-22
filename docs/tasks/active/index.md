@@ -16,4 +16,4 @@ count, and it only changes when the shape of what remains changes.
 | 3 | Move DB connection to environment variables | 0/2 | db.js hardcoded + no .env.example | — | — | [task-03-env-driven-db-config.md](task-03-env-driven-db-config.md) |
 | 4 | Remove unused API_ROUTES constant | 0/1 | constants.ts §API_ROUTES is dead code | — | — | [task-04-remove-unused-api-routes-constant.md](task-04-remove-unused-api-routes-constant.md) |
 | 5 | Forgot password + logout via Resend | 0/8 | reset flow + Resend email; logout pinned | refactor-05, refactor-03 | — | [task-05-forgot-password-and-logout.md](task-05-forgot-password-and-logout.md) |
-| 6 | Preserve SQL Server data across the migration | 1/4 | capture the backup (6.1); load + reconcile into Postgres after refactor-04 | — | — | [task-06-preserve-sqlserver-data.md](task-06-preserve-sqlserver-data.md) |
+| 6 | Preserve SQL Server data across the migration | 2/4 | load + reconcile into Postgres after refactor-04 | — | — | [task-06-preserve-sqlserver-data.md](task-06-preserve-sqlserver-data.md) |

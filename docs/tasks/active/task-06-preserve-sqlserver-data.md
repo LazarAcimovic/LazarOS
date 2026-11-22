@@ -55,11 +55,11 @@ Verify: the native `.bak` restores cleanly to a scratch SQL Server database; the
 row counts equal the live `profiles`/`tasks` counts; the manifest records per-table counts and a
 content checksum.
 
-- [ ] A native SQL Server backup (`.bak`) of `LazarOS` is taken and stored **outside the repo** —
+- [x] A native SQL Server backup (`.bak`) of `LazarOS` is taken and stored **outside the repo** —
       the untouched safety copy that can always be restored if the migration goes wrong.
-- [ ] A portable, engine-neutral export (per-table CSV/JSON or `INSERT` statements) of every
+- [x] A portable, engine-neutral export (per-table CSV/JSON or `INSERT` statements) of every
       `profiles` and `tasks` row — all columns, nulls and soft-deleted rows included.
-- [ ] A manifest records each table's exact row count and a deterministic content checksum (an
+- [x] A manifest records each table's exact row count and a deterministic content checksum (an
       ordered hash over all rows) as the source of truth for reconciliation.
 - Commit: `chore(db): complete verifiable backup of the SQL Server data`
 
