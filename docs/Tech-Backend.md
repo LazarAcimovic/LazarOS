@@ -162,25 +162,38 @@ pool hides the exact query shape from the test.
 
 ### Test database
 
-Tests run against a separate database — `LazarOS_Test` on the same SQL Server instance used
-for development (`DESKTOP-8R6Q0B4`, Windows authentication). The database must be created once
-manually:
+Tests run against a throwaway SQL Server **Docker container** (`lazaros-test-db`, image
+`mcr.microsoft.com/mssql/server:2022-latest`, defined in `backend/docker-compose.test.yml`),
+never the developer's instance. It listens on host port **14333** (container 1433), has no
+volume, and uses SQL authentication (`sa`) because a Linux container cannot do Windows
+`Trusted_Connection`.
 
-```sql
--- Run once in SSMS or sqlcmd connected to master:
-IF DB_ID('LazarOS_Test') IS NULL
-    CREATE DATABASE LazarOS_Test;
-```
+- `cd backend && npm test` runs `backend/scripts/test-with-db.mjs`: `docker compose up -d --wait`, then
+  `vitest run`, then **always** `docker compose down -v` (even when tests fail), exiting with
+  vitest's exit code.
+- `npm run test:db:up` / `npm run test:db:down` start and remove the container by hand;
+  `npm run test:unit` runs vitest alone against an already-running container.
+- `vitest.config.js` sets `TEST_DB_CONNECTION_STRING` (defined once in
+  `tests/setup/testDbConfig.js`, `Database=LazarOS_Test`), `DB_NAME=LazarOS_Test` and a
+  test-only `JWT_SECRET`. `config/db.js` uses `TEST_DB_CONNECTION_STRING` when it is set and
+  otherwise builds the dev Windows-auth string; nothing outside the test setup sets it, so tests
+  never reach the dev database (`LazarOS`).
+- A vitest `globalSetup` (`tests/setup/globalSetup.js`) connects to the container's `master`,
+  retrying until SQL Server accepts connections, and runs `CREATE DATABASE LazarOS_Test` if it
+  is missing. Each test suite then drops and recreates the tables it needs in `beforeAll`.
 
-`vitest.config.js` sets `DB_NAME=LazarOS_Test` and a test-only `JWT_SECRET` for every test
-run. Each test suite drops and recreates the tables it needs in `beforeAll`, so the developer's
-working database (`LazarOS`) is never touched.
+**Unit tests touch no database.** A unit test (schemas, the `today` guard, other pure logic) imports the schema or function directly and never imports `app.js`, `getPool` or `config/db.js`; anything that needs a database is an integration test.
 
 ### Pinned tests
 
 | File | What it covers |
 |---|---|
 | `tests/dashboard.test.js` | `GET /api/tasks/dashboard` — three-bucket shape, row counts, `days_overdue` (PRD §4.7–4.8) |
+| `tests/tasks.test.js` | task surface integration — DB §6 dashboard cases, overdue persistence, All tasks / Upcoming / Archive lists, create ownership, edit transitions, soft-delete 404s, user A/B isolation (404), missing `today` → 400 (PRD §4.3–4.11, §4.13, §7) |
+| `tests/auth.test.js` | `/api/auth` register, login, logout, `me` and `protect` — cookie flags, duplicate email, identical 401, password never returned (PRD §4.1, §4.2, §4.12, §4.13, §7) — integration |
+| `tests/authSchemas.test.js` | `registerSchema` / `loginSchema` limits (PRD §6) — unit |
+| `tests/taskSchemas.test.js` | `createTaskSchema` / `updateTaskSchema` limits (PRD §6) — unit |
+| `tests/todayGuard.test.js` | the `today` `YYYY-MM-DD` guard pattern (PRD §6, §4.13) — unit |
 
 ### Rules that always apply
 

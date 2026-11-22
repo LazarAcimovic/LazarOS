@@ -208,8 +208,45 @@ Page / integration tests follow the same co-location rule under their feature sl
 ### Mocking convention
 
 Mock at the `features/*/api/` layer, never at the `axios` level. This keeps each feature's
-API calls replaceable without touching the shared HTTP client. A `vi.mock('../api')` at the top
-of a page test is the expected pattern once page tests exist.
+API calls replaceable without touching the shared HTTP client. Page tests put `vi.mock("../api")`
+(automock) at the top, call `vi.resetAllMocks()` in `beforeEach`, and script each case with
+`vi.mocked(apiX).mockResolvedValue(...)` / `.mockRejectedValue({ response: { data: { message } } })`.
+Assertions check what the api function was called with (`apiUpdateTask("p1", { status: "completed" })`)
+and what the page then renders. Cross-feature imports are mocked by their alias path
+(`vi.mock("@/features/auth/api")` in the `AuthGuard` test).
 
-No router wrapper helper is needed for pure component tests; add one if a component or page
-under test calls a router hook (`useNavigate`, `useParams`, etc.).
+Pages that call a router hook (`LoginPage`, `RegisterPage`) are wrapped in `<MemoryRouter>`;
+`AuthGuard` is rendered inside a `MemoryRouter` with a `/login` route and a guarded `/` route,
+and the zustand `authStore` is reset with `useAuthStore.setState(...)` in `beforeEach`. Pages
+with no router hook (`TodayPage`, `AllTasksPage`, `UpcomingPage`, `ArchivePage`) render bare.
+Shared task fixtures (`makeTask`, `makeDashboardTask`, `localDate`) live in
+`features/tasks/test-utils.ts`.
+
+### Suites in place
+
+- Component: `TaskCard.test.tsx`.
+- Auth pages: `LoginPage.test.tsx`, `RegisterPage.test.tsx` (inline Zod errors, `auth__error`
+  strip, submitting state).
+- Task pages: `TodayPage.test.tsx`, `AllTasksPage.test.tsx` (filters, `PAGE_SIZE` 10),
+  `UpcomingPage.test.tsx` (grouping, "Tomorrow", `PAGE_SIZE` 5), `ArchivePage.test.tsx`
+  (restore), `TaskWriteFlows.test.tsx` (create / toggle both ways / delete at the `api/` boundary).
+- Provider: `providers/AuthGuard.test.tsx` (401 redirects to `/login`).
+- Utils: `features/tasks/utils/index.test.ts` (unit, no render, no `api/`: `getLocalToday` returns the
+  local date as `YYYY-MM-DD`, `formatDueDate` / `formatGroupDate` in `en-US` with "Tomorrow" and
+  year-omitted-when-current, `priorityLabel`; the clock is faked with `vi.useFakeTimers()` +
+  `vi.setSystemTime`, restored in `afterEach`).
+
+### End-to-end (Playwright)
+
+Run with `cd frontend && npm run test:e2e` (requires Docker; first run needs
+`npx playwright install chromium`). `e2e/run-e2e.mjs` mirrors the backend runner: it starts a
+throwaway SQL Server container (`e2e/docker-compose.e2e.yml`, host port 14334, database
+`LazarOS_E2E`, no volume), creates the database, applies the tables and indexes of
+`backend/db/schema.sql` (sections 3-5, no seed), runs `playwright test`, and always runs
+`down -v` afterwards. Playwright's `webServer` array (`playwright.config.ts`) then starts the
+backend on port 5001 (`TEST_DB_CONNECTION_STRING` pointing at the e2e container, `JWT_SECRET`)
+and Vite on port 5174 with `VITE_API_URL` set to `http://localhost:5001/api` (process env beats
+`.env.development`). Specs live in `frontend/e2e/` and are excluded from Vitest. Ports and
+credentials are defined once in `e2e/e2eConfig.mjs`. The e2e stack never touches the dev database
+or the backend test database (14333). Journeys: `smoke.spec.ts` (register, land on Today);
+`journeys.spec.ts` (create today + yesterday task with overdue badge; complete then browser clock +1 day via `page.clock.install` drops it from the dashboard; delete, Archive, restore; logout and Back stay on `/login`).

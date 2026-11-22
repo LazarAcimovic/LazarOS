@@ -1,0 +1,17 @@
+# Throwaway SQL Server for the backend test suite. No volume: `down -v` leaves nothing behind.
+# Host port 14333 keeps it isolated from any local SQL Server on 1433.
+services:
+  lazaros-test-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: lazaros-test-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "LazarOS_Test_Pass123!"
+    ports:
+      - "14333:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" -b"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s

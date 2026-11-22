@@ -84,6 +84,15 @@ From [frontend/package.json](../frontend/package.json):
   tracked as task `task-03`.
 - **Schema file:** [backend/db/schema.sql](../backend/db/schema.sql). Drop-and-recreate; no
   migration framework. Documented in `DB.md` §5.
+- **Test database:** a throwaway SQL Server 2022 Docker container
+  ([backend/docker-compose.test.yml](../backend/docker-compose.test.yml), host port 14333, SQL
+  auth), selected via `TEST_DB_CONNECTION_STRING` set only by `vitest.config.js`. Details in
+  `Tech-Backend.md` §9.
+- **E2E database:** a second throwaway SQL Server 2022 container for Playwright
+  ([frontend/e2e/docker-compose.e2e.yml](../frontend/e2e/docker-compose.e2e.yml), host port 14334,
+  database `LazarOS_E2E`, SQL auth), created and schema-loaded per run by
+  `frontend/e2e/run-e2e.mjs` and removed with `down -v`. Separate from the test DB on 14333.
+  Details in `Tech-Frontend.md` §9.
 - **Query style:** every call goes through `pool.request().input(...).query(sql)` — named
   parameters, never string interpolation. This is the SQL-injection boundary (PRD §6).
 
@@ -146,6 +155,19 @@ Vite picks any free port starting at 5173; the backend CORS allowlist accepts an
 `http://localhost(:port)?` origin. To seed the database, run
 [backend/db/schema.sql](../backend/db/schema.sql) once in SSMS or `sqlcmd` against a SQL Server
 instance.
+
+Backend tests (requires Docker; starts and removes the test database container itself):
+
+```bash
+cd backend && npm test
+```
+
+End-to-end tests (Playwright; requires Docker, starts the e2e database, backend and frontend,
+and removes the database container itself; first run needs `npx playwright install chromium`):
+
+```bash
+cd frontend && npm run test:e2e
+```
 
 The docs pre-commit hook is enabled with:
 

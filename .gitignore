@@ -8,3 +8,7 @@ build/
 # Local-only snapshots of superseded docs
 docs/old/
 
+
+# Playwright output
+frontend/test-results/
+frontend/playwright-report/
