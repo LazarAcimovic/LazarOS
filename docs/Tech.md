@@ -40,6 +40,8 @@ From [backend/package.json](../backend/package.json):
 | `zod` | `^3.23.8` | Request validation |
 | `dotenv` | `^16.4.5` | Loads `.env` on startup |
 | `nodemon` (dev) | `^3.1.4` | Reload-on-change dev loop |
+| `vitest` (dev) | `^5.1.1` | Test runner |
+| `supertest` (dev) | `^7.3.2` | HTTP integration test client |
 
 ### Frontend — installed
 
@@ -60,8 +62,8 @@ From [frontend/package.json](../frontend/package.json):
 
 - **No ORM.** All DB access is raw parameterized T-SQL through the shared pool. Adding one is
   out of scope (PRD §10). Mentioned in the README as a conscious choice.
-- **No test framework** in either tier. See §5 and the refactor campaign `refactor-02` for the
-  plan to add one.
+- **No frontend test framework.** The backend has Vitest + Supertest (refactor-02 R02.1).
+  The frontend runner is tracked in R02.2.
 - **No linter or formatter.** No `eslint`/`prettier` config in either tier.
 - **No pre-commit tooling** before this documentation system (the hook in `.githooks/pre-commit`
   runs only the docs check; see §4).
@@ -136,8 +138,8 @@ script itself.
 ## 5. What's intentionally simple
 
 - **No ORM** — see §1 above.
-- **No tests yet** — the full code base ships without automated tests. The task tracker and
-  the `refactor-02` campaign both reflect this; no document anywhere pretends tests exist.
+- **No frontend tests yet.** The backend has a pinned integration test (`tests/dashboard.test.js`);
+  the frontend runner is tracked in `refactor-02` R02.2.
 - **One shared SQL Server pool, Windows auth, drop-recreate schema.** This is a
   single-developer, single-machine setup. Moving to env-based config and real migrations is a
   tracked refactor campaign, not a hidden assumption.

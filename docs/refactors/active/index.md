@@ -10,4 +10,8 @@ Progress counts subtasks; a subtask counts as done only when every one of its bo
 | Campaign | Title | Progress | What's left | Depends on | Blocks | File |
 |---|---|---|---|---|---|---|
 | refactor-01 | Split global.css by concern | 0/1 | 1006-line monolith + no CSS module layout | — | — | [refactor-01-split-global-css.md](refactor-01-split-global-css.md) |
-| refactor-02 | Introduce a test framework on both tiers | 0/2 | no test runner on backend or frontend | — | every future `Test:` subtask | [refactor-02-introduce-test-framework.md](refactor-02-introduce-test-framework.md) |
+| refactor-02 | Introduce a test framework on both tiers | 1/2 | frontend runner (R02.2) | — | every future `Test:` subtask | [refactor-02-introduce-test-framework.md](refactor-02-introduce-test-framework.md) |
+| refactor-03 | PRD behaviour suite + Playwright e2e | 0/7 | unit/integration/e2e suites + dockerized test DB | refactor-02 | refactor-04, refactor-05, refactor-06, task-05 | [refactor-03-prd-behaviour-suite-and-e2e.md](refactor-03-prd-behaviour-suite-and-e2e.md) |
+| refactor-04 | Migrate SQL Server → PostgreSQL | 0/6 | pg driver, schema, queries and seed port | refactor-03 | refactor-05 | [refactor-04-mssql-to-postgres.md](refactor-04-mssql-to-postgres.md) |
+| refactor-05 | Replace raw SQL with Prisma ORM | 0/6 | introspect + port controllers to Prisma | refactor-04 | task-05 | [refactor-05-prisma-orm.md](refactor-05-prisma-orm.md) |
+| refactor-06 | Transform frontend to the React 19 feature-sliced stack | 0/8 | stack upgrade, restructure, rebuild on shadcn | refactor-02, refactor-03 | — | [refactor-06-frontend-transformation.md](refactor-06-frontend-transformation.md) |

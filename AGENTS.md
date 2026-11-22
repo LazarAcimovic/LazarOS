@@ -162,10 +162,12 @@ report, not a guess and not a silent choice.
 Red → Green → Refactor → Verify on every implementation subtask. Load the relevant Testing
 section before writing tests.
 
-**There are no automated tests in this repo yet.** Until the `refactor-02` campaign lands a
-test framework, the `Verify:` line of every implementation subtask spells out the manual
-check (a specific `curl` call, a specific screen path, an SQL assertion). Do not write tests
-against a framework that is not installed. Once `refactor-02` lands, update this section.
+**Backend:** Vitest + Supertest. Run with `cd backend && npm test`. Tests live in
+`backend/tests/`; each suite drops and recreates the tables it needs against `LazarOS_Test`
+(one-time manual DB creation; see Tech-Backend §9). Do not mock `getPool`.
+
+**Frontend:** no test framework yet — R02.2 will add it. Until then, `Verify:` on
+frontend subtasks spells out the manual check (a specific screen path, a visual assertion).
 
 Each subtask body carries a mandatory `Rules:` line naming the sections it implements, or
 `Rules: none`. Load every section it names **before** the Red step: the bullets become the test
@@ -176,8 +178,8 @@ are not valid.
 
 | Sub-tag | The change is in… | Test type |
 |---|---|---|
-| `Backend-service` | a controller helper or non-HTTP logic | Unit, mocked pool (once tests exist) |
-| `Backend-endpoint` | a route, controller or validator | Integration, real HTTP + DB (once tests exist) |
+| `Backend-service` | a controller helper or non-HTTP logic | Unit, mocked pool |
+| `Backend-endpoint` | a route, controller or validator | Integration, real HTTP + DB (`LazarOS_Test`) |
 | `Backend-migration` | `backend/db/schema.sql` or its replacement | Integration, schema assertion |
 | `Frontend-service` | a function under a feature's `api/` folder | Unit with HTTP mocking, no UI |
 | `Frontend-component` | one presentational component taking props | Unit, co-located, mocked deps |
@@ -193,7 +195,7 @@ There is no `DB` sub-tag: schema work is `Backend-migration`, seed work is `Seed
 documentation-only schema edit is `Docs`.
 
 Use `Test:` only for test-only work — never as a duplicate of the subtask already producing
-the test in its Red step (or the manual Verify while no framework is installed).
+the test in its Red step.
 
 **Every subtask body also carries:**
 

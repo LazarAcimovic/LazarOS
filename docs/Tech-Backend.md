@@ -144,18 +144,45 @@ Controllers set `res.status(4xx)` then `throw new Error(...)`; `asyncHandler` fo
 
 ## 9. Testing
 
-**There are no automated tests.** No test framework, no runner, no fixtures, no mocking
-convention. This is tracked honestly rather than hidden:
+**Framework:** [Vitest](https://vitest.dev/) as the test runner, [Supertest](https://github.com/ladjs/supertest) for HTTP assertions. Run with:
 
-- The refactor campaign `refactor-02` (see `docs/refactors/active/`) will introduce a test
-  framework and establish a mocking boundary.
-- Until then, every task that implements new behaviour should either wait for `refactor-02`
-  or add an explicit "testing: manual, documented in Verify:" note to its subtasks.
+```bash
+cd backend && npm test
+```
 
-Anti-patterns to avoid when tests arrive:
+### Test file location
 
-- Do not mock `getPool`. The dashboard query is the most important rule in the system and the
-  test must run it against a real database (even if that database is seeded per-test).
-- Do not assert against `completed_at` to the millisecond. Compare `CAST(completed_at AS DATE)`
-  — that is the only part the dashboard query reads.
+All backend tests live under `backend/tests/`. Each file is an ES module; import `app` from `../app.js` and `getPool`/`sql` from `../config/db.js`.
+
+### Mocking boundary
+
+**Do not mock `getPool`.** Every integration test hits a real SQL Server database. The dashboard
+query is the most important rule in the system and must be exercised end-to-end. Mocking the
+pool hides the exact query shape from the test.
+
+### Test database
+
+Tests run against a separate database — `LazarOS_Test` on the same SQL Server instance used
+for development (`DESKTOP-8R6Q0B4`, Windows authentication). The database must be created once
+manually:
+
+```sql
+-- Run once in SSMS or sqlcmd connected to master:
+IF DB_ID('LazarOS_Test') IS NULL
+    CREATE DATABASE LazarOS_Test;
+```
+
+`vitest.config.js` sets `DB_NAME=LazarOS_Test` and a test-only `JWT_SECRET` for every test
+run. Each test suite drops and recreates the tables it needs in `beforeAll`, so the developer's
+working database (`LazarOS`) is never touched.
+
+### Pinned tests
+
+| File | What it covers |
+|---|---|
+| `tests/dashboard.test.js` | `GET /api/tasks/dashboard` — three-bucket shape, row counts, `days_overdue` (PRD §4.7–4.8) |
+
+### Rules that always apply
+
+- Do not assert against `completed_at` to the millisecond; compare `CAST(completed_at AS DATE)`.
 - Do not reseed in parallel; the drop-recreate schema is not reentrant.

@@ -18,11 +18,11 @@ does.
 
 | Measure | Before | After (fill in at the end) |
 |---|---|---|
-| backend test framework | none | |
+| backend test framework | none | Vitest + Supertest |
 | frontend test framework | none | |
-| `cd backend && npm test` | command does not exist | |
+| `cd backend && npm test` | command does not exist | runs dashboard integration test, green |
 | `cd frontend && npm test` | command does not exist | |
-| dashboard-query test pinned | no | |
+| dashboard-query test pinned | no | yes — `tests/dashboard.test.js` |
 
 #### Out of scope
 
@@ -52,15 +52,15 @@ Tech.md §1 (add the runner to the "installed" table), Tech.md §5 (remove the "
 bullet).
 Verify: `cd backend && npm test` runs the dashboard-query test and prints green.
 
-- [ ] A test runner (e.g. `node --test` with `supertest`, or `vitest` + `supertest`) added
+- [x] A test runner (e.g. `node --test` with `supertest`, or `vitest` + `supertest`) added
       to `backend/devDependencies` and wired into `npm test`.
-- [ ] Decide the mocking boundary: the dashboard test hits a real SQL Server database (per
+- [x] Decide the mocking boundary: the dashboard test hits a real SQL Server database (per
       Tech-Backend §9 anti-pattern "do not mock getPool"). Document how to spin one up —
       Docker, or an existing local instance — in Tech-Backend §9.
-- [ ] One integration test: given a user + three tasks (overdue / today / completed today),
+- [x] One integration test: given a user + three tasks (overdue / today / completed today),
       `GET /api/tasks/dashboard?today=...` returns the expected three buckets with the
       expected row counts and `days_overdue` values.
-- [ ] Test uses its own DB name (e.g. `LazarOS_Test`) or a per-test schema reset — never the
+- [x] Test uses its own DB name (e.g. `LazarOS_Test`) or a per-test schema reset — never the
       developer's working database.
 - Commit: `chore(backend): add test runner and pin dashboard query test`
 
