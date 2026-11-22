@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# Pre-commit hook: run the docs consistency check when any documentation file is staged.
+# Enable with: git config core.hooksPath .githooks
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+echo "$STAGED" | grep -qE '^(docs/|AGENTS\.md$|CLAUDE\.md$|scripts/check-docs\.mjs$)' || exit 0
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found on PATH — skipping docs check" >&2
+  exit 0
+fi
+
+node scripts/check-docs.mjs
