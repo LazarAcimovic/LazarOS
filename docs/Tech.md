@@ -54,16 +54,19 @@ From [frontend/package.json](../frontend/package.json):
 | `axios` | `^1.7.2` | HTTP client with `withCredentials: true` |
 | `zustand` | `^4.5.4` | Global state (auth, theme) |
 | `zod` | `^3.23.8` | Form validation |
-| `vite` (dev) | `^5.3.4` | Dev server and build tool |
-| `@vitejs/plugin-react` (dev) | `^4.3.1` | Vite React plugin |
+| `vite` (dev) | `^6.4.6` | Dev server and build tool |
+| `@vitejs/plugin-react` (dev) | `^4.7.0` | Vite React plugin |
 | `typescript` (dev) | `^5.5.3` | Type checker; strict mode on, see [tsconfig.json](../frontend/tsconfig.json) |
+| `vitest` (dev) | `^5.1.1` | Test runner (matches backend version) |
+| `@testing-library/react` (dev) | `^16.3.3` | Component rendering for tests |
+| `@testing-library/user-event` (dev) | `^14.6.13` | User interaction simulation |
+| `@testing-library/jest-dom` (dev) | `^8.0.0` | DOM matchers (`toBeInTheDocument`, etc.) |
+| `jsdom` (dev) | `^29.1.1` | DOM environment for vitest |
 
 ### Deliberately not installed
 
 - **No ORM.** All DB access is raw parameterized T-SQL through the shared pool. Adding one is
   out of scope (PRD §10). Mentioned in the README as a conscious choice.
-- **No frontend test framework.** The backend has Vitest + Supertest (refactor-02 R02.1).
-  The frontend runner is tracked in R02.2.
 - **No linter or formatter.** No `eslint`/`prettier` config in either tier.
 - **No pre-commit tooling** before this documentation system (the hook in `.githooks/pre-commit`
   runs only the docs check; see §4).
@@ -138,8 +141,9 @@ script itself.
 ## 5. What's intentionally simple
 
 - **No ORM** — see §1 above.
-- **No frontend tests yet.** The backend has a pinned integration test (`tests/dashboard.test.js`);
-  the frontend runner is tracked in `refactor-02` R02.2.
+- **One pinned test per tier, no coverage threshold.** The backend has `tests/dashboard.test.js`;
+  the frontend has `src/features/tasks/components/TaskCard.test.tsx`. Backfilling is future task
+  work; `refactor-02` only installed the frameworks and added one test each.
 - **One shared SQL Server pool, Windows auth, drop-recreate schema.** This is a
   single-developer, single-machine setup. Moving to env-based config and real migrations is a
   tracked refactor campaign, not a hidden assumption.

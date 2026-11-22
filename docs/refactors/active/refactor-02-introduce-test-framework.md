@@ -19,9 +19,9 @@ does.
 | Measure | Before | After (fill in at the end) |
 |---|---|---|
 | backend test framework | none | Vitest + Supertest |
-| frontend test framework | none | |
+| frontend test framework | none | Vitest + @testing-library/react + jsdom |
 | `cd backend && npm test` | command does not exist | runs dashboard integration test, green |
-| `cd frontend && npm test` | command does not exist | |
+| `cd frontend && npm test` | command does not exist | runs TaskCard test, green |
 | dashboard-query test pinned | no | yes — `tests/dashboard.test.js` |
 
 #### Out of scope
@@ -74,11 +74,11 @@ Not in scope: backfilling tests for other components, adding E2E, mocking `axios
 Docs to update: Tech-Frontend §9 (replace the "no tests yet" paragraphs); Tech.md §1 and §5.
 Verify: `cd frontend && npm test` runs the TaskCard test and prints green.
 
-- [ ] A test runner (e.g. `vitest` + `@testing-library/react` + `jsdom`) added to
+- [x] A test runner (e.g. `vitest` + `@testing-library/react` + `jsdom`) added to
       `frontend/devDependencies` and wired into `npm test`.
-- [ ] One component test: `TaskCard` renders the priority pill with the right class, shows
+- [x] One component test: `TaskCard` renders the priority pill with the right class, shows
       the overdue badge when `showDaysOverdue` is true and `days_overdue > 0`, and calls
       `onComplete` / `onEdit` / `onDelete` when their buttons are clicked.
-- [ ] Mocking convention documented: mock at `features/*/api/*`, not at `axios`; one helper
+- [x] Mocking convention documented: mock at `features/*/api/*`, not at `axios`; one helper
       for the router wrapper if needed.
 - Commit: `chore(frontend): add test runner and pin TaskCard test`

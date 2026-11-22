@@ -187,13 +187,29 @@ Component state is `useState` + `useMemo` for derived values. There is no global
 
 ## 9. Testing
 
-**There are no automated tests on the frontend.** No Vitest, no Jest, no Testing Library, no
-Playwright. This is tracked in `refactor-02`.
+**Framework: Vitest + @testing-library/react + jsdom**, added in `refactor-02` R02.2.
 
-Until a framework lands:
+Run with `cd frontend && npm test` (executes `vitest run`, non-interactive).
 
-- Verify UI changes manually. The PR description should say which screens were exercised.
-- Prefer small, pure utility functions (`src/features/tasks/utils/index.ts`) — they will be the
-  first testable surface.
-- Do not stub `axios` globally; when tests arrive, the plan is to mock at the `api/` layer so
-  features stay decoupled from the HTTP client.
+### Setup
+
+- `vite.config.ts` carries the `test` block: `environment: "jsdom"`, `globals: true`,
+  `setupFiles: ["./src/test-setup.ts"]`.
+- `src/test-setup.ts` imports `@testing-library/jest-dom` to extend the global `expect` with
+  DOM matchers (`toBeInTheDocument`, `toHaveClass`, etc.).
+- `tsconfig.json` includes `"types": ["vitest/globals"]` so `describe`, `it`, `expect`, `vi`
+  are typed without explicit imports in test files.
+
+### Where tests live
+
+Component tests sit beside their component: `TaskCard.test.tsx` next to `TaskCard.tsx`.
+Page / integration tests follow the same co-location rule under their feature slice.
+
+### Mocking convention
+
+Mock at the `features/*/api/` layer, never at the `axios` level. This keeps each feature's
+API calls replaceable without touching the shared HTTP client. A `vi.mock('../api')` at the top
+of a page test is the expected pattern once page tests exist.
+
+No router wrapper helper is needed for pure component tests; add one if a component or page
+under test calls a router hook (`useNavigate`, `useParams`, etc.).
