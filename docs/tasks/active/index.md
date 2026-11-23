@@ -15,3 +15,4 @@ count, and it only changes when the shape of what remains changes.
 | 2 | Remove stale SameSite comment in apiClient | 0/1 | one comment in frontend/src/shared/api/apiClient.ts | — | — | [task-02-remove-stale-samesite-comment.md](task-02-remove-stale-samesite-comment.md) |
 | 4 | Remove unused API_ROUTES constant | 0/1 | constants.ts §API_ROUTES is dead code | — | — | [task-04-remove-unused-api-routes-constant.md](task-04-remove-unused-api-routes-constant.md) |
 | 5 | Forgot password + logout via Resend | 0/8 | reset flow + Resend email; logout pinned | refactor-05, refactor-03 | — | [task-05-forgot-password-and-logout.md](task-05-forgot-password-and-logout.md) |
+| 6 | Remove CORS; same-origin dev via Vite proxy | 0/4 | drop cors middleware+dep, add Vite /api proxy, relative axios base | — | — | [task-06-remove-cors-vite-proxy.md](task-06-remove-cors-vite-proxy.md) |
