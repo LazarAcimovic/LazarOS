@@ -290,3 +290,25 @@ runner and the dashboard `$queryRaw`.
 a typed client, one datamodel and a real migration history (incremental, replayable, no data wipe)
 in place of the drop-and-recreate `schema.sql`. Prisma introspects an existing Postgres database
 cleanly, so the move is additive and provable against the behaviour suite.
+
+### D-019 — Code-first schema: `prisma/schema.prisma` is the source of truth; `schema.sql` retired
+
+**Decided:** 2026-11-23 · **Status:** Accepted
+**Answer:** `refactor-07` completes the move from database-first to **code-first**. After
+`refactor-05` baselined the existing schema, `prisma/schema.prisma` becomes the single source of
+truth and the Prisma **migrations** (`prisma/migrations/`) are the one schema definition applied
+everywhere — dev, prod, the backend integration suites (via `tests/setup/resetSchema.js`) and the
+e2e runner. The legacy drop-and-recreate `backend/db/schema.sql` — previously the source of truth
+and the demo seed — is **deleted**; its seed moves to a Prisma seed script (`prisma/seed.mjs`). A
+schema change is now: edit `schema.prisma` → `prisma migrate dev` → the migration applies everywhere.
+
+**No behaviour change.** The migrations reproduce the identical schema; the `refactor-03` backend
+suite and the e2e journeys are the proof and stay green.
+
+**Lives in:** DB §4, §5 · Tech §2, §4 · Tech-Backend §9 · Tech-Frontend §9
+**Why:** Database-first kept the schema in five hand-synced places — `schema.sql`, the three
+integration suites' inline `CREATE TABLE` DDL, and the e2e loader reading `schema.sql` — with the
+datamodel merely mirroring the database. Code-first makes the migrations the one definition: a
+change is authored once in `schema.prisma`, turned into a reviewable migration, and replayed
+identically in every environment — which is also what `task-05` needs to add `password_reset_tokens`
+as a tracked migration.

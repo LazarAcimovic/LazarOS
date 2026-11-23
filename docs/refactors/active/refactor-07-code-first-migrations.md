@@ -57,10 +57,10 @@ tooling), Tech-Backend §9 (suites apply migrations, not inline DDL), Tech-Front
 migrations, not `schema.sql`), Decisions D-0NN (adopt code-first; retire `schema.sql`; the seed move).
 Verify: `node scripts/check-docs.mjs`
 
-- [ ] DB §5 describes `schema.prisma` as the source of truth and the `migrate dev` → migration →
+- [x] DB §5 describes `schema.prisma` as the source of truth and the `migrate dev` → migration →
       apply-everywhere loop; DB §4 points the seed at the Prisma seed script.
-- [ ] Tech-Backend §9 / Tech-Frontend §9 describe tests and e2e applying the migrations.
-- [ ] A Decisions entry records the code-first adoption, the `schema.sql` retirement and the seed move.
+- [x] Tech-Backend §9 / Tech-Frontend §9 describe tests and e2e applying the migrations.
+- [x] A Decisions entry (D-019) records the code-first adoption, the `schema.sql` retirement and the seed move.
 - Commit: `docs: adopt the Prisma Migrate code-first workflow`
 
 ---

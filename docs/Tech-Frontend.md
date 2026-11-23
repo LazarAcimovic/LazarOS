@@ -240,9 +240,9 @@ Shared task fixtures (`makeTask`, `makeDashboardTask`, `localDate`) live in
 
 Run with `cd frontend && npm run test:e2e` (first run needs `npx playwright install chromium`).
 No Docker. `e2e/run-e2e.mjs` prepares a dedicated **PostgreSQL** database `LazarOS_E2E` on the
-local server (created if missing via the maintenance `postgres` database), applies the tables and
-indexes of `backend/db/schema.sql` (the DDL above the seed banner; the drop-recreate resets them
-each run), then runs `playwright test`. Playwright's `webServer` array (`playwright.config.ts`)
+local server (created if missing via the maintenance `postgres` database), resets it by dropping the
+`public` schema and applying the Prisma migrations (`backend/prisma/migrations`), then runs
+`playwright test`. Playwright's `webServer` array (`playwright.config.ts`)
 starts the backend on port 5001 (`DATABASE_URL` pointing at `LazarOS_E2E`, plus `JWT_SECRET`) and
 Vite on port 5174 with `VITE_API_URL` set to `http://localhost:5001/api` (process env beats
 `.env.development`). Specs live in `frontend/e2e/` and are excluded from Vitest. Ports,

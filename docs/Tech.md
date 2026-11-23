@@ -81,17 +81,15 @@ From [frontend/package.json](../frontend/package.json):
 - **Connection string:** `DATABASE_URL` (e.g. `postgres://user:pass@localhost:5432/LazarOS`),
   read from the environment — nothing is hardcoded (the engine switch and env move are D-016).
 - **ORM:** [Prisma](https://www.prisma.io/) `7.10.1` (D-018). The generated Prisma Client is the
-  data-access layer; the datamodel lives in `prisma/schema.prisma` and `prisma migrate` owns schema
-  changes (DB §5). The one computed path (the dashboard, DB §6) stays raw via a parameterized
-  `prisma.$queryRaw`. The legacy [backend/db/schema.sql](../backend/db/schema.sql) is retained only
-  until the code-first migration workflow fully supersedes it.
+  data-access layer; `prisma/schema.prisma` is the source of truth and `prisma migrate` owns schema
+  changes code-first (DB §5, D-019). The one computed path (the dashboard, DB §6) stays raw via a
+  parameterized `prisma.$queryRaw`. The demo seed is a Prisma seed script (`prisma/seed.mjs`).
 - **Test database:** a separate PostgreSQL database `LazarOS_Test` on the same server as dev,
   selected via `DATABASE_URL` set to `TEST_DATABASE_URL` by `vitest.config.js`. No Docker.
   Details in `Tech-Backend.md` §9.
-- **E2E database:** a separate PostgreSQL database `LazarOS_E2E` on the same server, created and
-  schema-loaded (tables + indexes only) per run by
-  [frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs). Separate from the dev and test
-  databases. Details in `Tech-Frontend.md` §9.
+- **E2E database:** a separate PostgreSQL database `LazarOS_E2E` on the same server, reset per run
+  by applying the Prisma migrations ([frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs)).
+  Separate from the dev and test databases. Details in `Tech-Frontend.md` §9.
 - **Query style:** data access goes through the Prisma Client (`prisma.profiles`, `prisma.tasks`),
   which parameterizes every query. The single raw path (the dashboard) uses a **parameterized**
   `prisma.$queryRaw` tagged template — bind parameters, never string interpolation. This is the
@@ -171,9 +169,9 @@ cd frontend && npm install && npm run dev
 ```
 
 Vite picks any free port starting at 5173; the backend CORS allowlist accepts any
-`http://localhost(:port)?` origin. Set `DATABASE_URL` (see §3), then seed the database by running
-[backend/db/schema.sql](../backend/db/schema.sql) once against your PostgreSQL database with
-`psql` (`psql "$DATABASE_URL" -f db/schema.sql` from `backend/`).
+`http://localhost(:port)?` origin. Set `DATABASE_URL` (see §3), then from `backend/` build the
+schema and seed: `npx prisma migrate deploy` (applies the migrations), then `node prisma/seed.mjs`
+(the demo data).
 
 Backend tests (against the local PostgreSQL server; `globalSetup` creates `LazarOS_Test` if it
 is missing):

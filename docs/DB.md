@@ -74,37 +74,36 @@ Defined in [backend/db/schema.sql](../backend/db/schema.sql).
 
 ## 4. Seed data
 
-`backend/db/schema.sql` inserts one profile and twenty tasks after the drop-recreate:
+The demo seed is a Prisma seed script (`prisma/seed.mjs`), run with `node prisma/seed.mjs` after
+`prisma migrate deploy` against a fresh database:
 
-- One `profiles` row: `lazar@lazaros.dev` / `Password123!` (bcrypt hash hardcoded in
-  `backend/db/schema.sql`), with id `11111111-1111-1111-1111-111111111111`.
-- Twenty `tasks` rows anchored to `current_date` — five on today, five on each of the three
-  following days.
+- One `profiles` row: `lazar@lazaros.dev` / `Password123!` (bcrypt hash in the seed script), with
+  id `11111111-1111-1111-1111-111111111111`.
+- Twenty `tasks` rows anchored to the current date — five today, five on each of the next three days.
 
-The seed is date-anchored (`current_date + make_interval(days => N)`), so re-running it
-reproduces the same dashboard experience on any date. It is a one-shot setup script for fresh
-dev and test databases, not a per-test fixture. It is **not** the real-data cutover — preserving
-the live rows is a separate procedure (DB §7, D-015).
+The seed is date-anchored, so re-running it reproduces the same dashboard experience on any date. It
+is a one-shot setup for a fresh dev database, not a per-test fixture (the suites seed their own rows)
+and **not** the real-data cutover — preserving the live rows is a separate procedure (DB §7, D-015).
 
 ## 5. Migrations
 
-Schema changes are owned by **Prisma Migrate** (`prisma` `7.10.1`, D-018). The datamodel is
-`prisma/schema.prisma`; `prisma migrate dev` diffs it against the applied history and writes a
-timestamped SQL migration under `prisma/migrations/`, which `prisma migrate deploy` replays
-verbatim on any database — incremental and non-destructive, unlike the old drop-and-recreate.
+`prisma/schema.prisma` is the **single source of truth** for the schema (code-first, D-019), and
+**Prisma Migrate** owns changes (`prisma` `7.10.1`, D-018). The loop is: edit the datamodel →
+`prisma migrate dev` writes a timestamped SQL migration under `prisma/migrations/` → `prisma migrate
+deploy` replays those migrations verbatim on any database. Incremental and non-destructive, unlike
+the old drop-and-recreate.
 
 The existing Postgres schema (D-016) was adopted **without data loss** by *baselining*
-(`refactor-05`): `prisma db pull` introspected it into the datamodel, then a baseline migration
+(`refactor-05`): `prisma db pull` introspected it into the datamodel, then the baseline migration
 (`0_init`) was generated with `prisma migrate diff` and marked already-applied with
-`prisma migrate resolve --applied`, so Prisma never drops or recreates the live tables.
+`prisma migrate resolve --applied`, so Prisma never drops or recreates the live tables. Prisma does
+not model `CHECK` constraints, so `0_init` recreates the two on `tasks` by hand (D-018).
 
-The legacy drop-and-recreate file [backend/db/schema.sql](../backend/db/schema.sql) is retained
-only until the code-first migration workflow fully supersedes it.
-
-**Test / E2E databases.** The backend test suites and the e2e runner still build their tables
-directly before each run (each suite's `beforeAll`;
-[frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs)) against the separate `LazarOS_Test` /
-`LazarOS_E2E` databases (Tech-Backend §9, Tech-Frontend §9) — never the dev database.
+**One schema source everywhere.** The backend integration suites and the e2e runner reset their
+databases by applying those same migrations — the backend via `tests/setup/resetSchema.js` in each
+`beforeAll`, the e2e runner in [frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs) — against the
+separate `LazarOS_Test` / `LazarOS_E2E` databases (Tech-Backend §9, Tech-Frontend §9), never the dev
+database. A fresh dev database is built with `prisma migrate deploy` and then seeded (§4).
 
 ## 6. Query cheat-sheet
 

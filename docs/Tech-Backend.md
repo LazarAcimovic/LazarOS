@@ -186,8 +186,10 @@ never the dev database (`LazarOS`). No Docker — the local PostgreSQL server ho
   `TEST_DATABASE_URL` env var) and sets a test-only `JWT_SECRET`. `config/db.js` reads
   `DATABASE_URL`, so the suite connects to the test database and never reaches `LazarOS`.
 - A vitest `globalSetup` (`tests/setup/globalSetup.js`) connects to the server's maintenance
-  `postgres` database and runs `CREATE DATABASE "LazarOS_Test"` if it is missing. Each test
-  suite then drops and recreates the tables it needs in `beforeAll`.
+  `postgres` database and runs `CREATE DATABASE "LazarOS_Test"` if it is missing. Each suite's
+  `beforeAll` then calls `resetSchema` (`tests/setup/resetSchema.js`), which drops the `public`
+  schema and applies the Prisma migrations — so tests run against exactly the migrated schema,
+  never a hand-maintained DDL copy (code-first, D-019).
 
 **Unit tests touch no database.** A unit test (schemas, the `today` guard, other pure logic) imports the schema or function directly and never imports `app.js`, `getPool` or `config/db.js`; anything that needs a database is an integration test.
 
