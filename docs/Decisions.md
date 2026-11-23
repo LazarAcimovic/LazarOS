@@ -266,7 +266,7 @@ JavaScript (the shared `backend/scripts/lib/canonical.mjs`), matching the Postgr
 Client is the data-access layer for every auth and task path; **Prisma Migrate** owns schema
 changes. The existing Postgres schema (D-016) is adopted **without data loss** by *baselining*:
 `prisma db pull` introspects it into `prisma/schema.prisma`, then a baseline migration is generated
-with `prisma migrate diff --from-empty --to-schema-datamodel` and marked already-applied with
+with `prisma migrate diff --from-empty --to-schema` and marked already-applied with
 `prisma migrate resolve --applied`, so Prisma never drops or recreates the live tables. The API
 contract and every product rule are unchanged — the `refactor-03` suite is the proof and stays
 green through each subtask.

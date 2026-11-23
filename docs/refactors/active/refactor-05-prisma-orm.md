@@ -71,12 +71,14 @@ mechanics need a note.
 Verify: `npx prisma generate` succeeds; `prisma/schema.prisma` matches DB.md; the app still
 boots and serves the (still-raw) endpoints.
 
-- [ ] `prisma` (dev) and `@prisma/client` added; `datasource` reads `DATABASE_URL`.
-- [ ] `prisma db pull` introspects the Postgres schema into `schema.prisma`, reviewed against
-      DB.md (models `profiles`, `tasks`; relation on `user_id`; the indexes and checks).
-- [ ] A baseline migration is created so `prisma migrate` has a starting point without dropping
-      data.
-- [ ] The generated client is importable; nothing in the controllers uses it yet.
+- [x] `prisma` (dev) and `@prisma/client` added (plus `@prisma/adapter-pg` — Prisma 7 requires a
+      driver adapter); the datasource URL resolves from `DATABASE_URL` via `prisma7.config.ts`.
+- [x] `prisma db pull` introspects the Postgres schema into `schema.prisma`, reviewed against
+      DB.md (models `profiles`, `tasks`; relation on `user_id`; the indexes). The two `CHECK`
+      constraints (Prisma does not model them) are preserved by hand in the `0_init` migration.
+- [x] A baseline migration (`0_init`) is created and marked `--applied`, so `prisma migrate` has a
+      starting point without dropping data; `prisma migrate status` reports no drift.
+- [x] The generated client is importable; nothing in the controllers uses it yet.
 - Commit: `chore(backend): install prisma and baseline the existing schema`
 
 ---
