@@ -75,12 +75,12 @@ Docs to update: Tech.md §2 (the import step).
 Verify: after loading into the migrated schema, Postgres `profiles`/`tasks` counts equal the 6.1
 manifest, and logging in with a real preserved account succeeds.
 
-- [ ] An idempotent import loads the 6.1 export into the Postgres `profiles` + `tasks` tables,
+- [x] An idempotent import loads the 6.1 export into the Postgres `profiles` + `tasks` tables,
       applying only the documented type conversions (`uniqueidentifier`→`uuid`, `datetime2`→
       `timestamptz`, `bit`→`boolean`, `VARCHAR(MAX)`→`text`) — values unchanged.
-- [ ] Insert order respects the foreign key (`profiles` before `tasks`); `is_deleted` and
+- [x] Insert order respects the foreign key (`profiles` before `tasks`); `is_deleted` and
       `completed_at` are preserved exactly.
-- [ ] Re-running the import keys on the original ids and never duplicates rows.
+- [x] Re-running the import keys on the original ids and never duplicates rows.
 - Commit: `feat(db): load the preserved SQL Server data into Postgres`
 
 ---

@@ -110,6 +110,22 @@ hashes:
   directory beside the repo checkout (overridable by argument), and `DB_SERVER`/`DB_NAME` override
   the source. The `manifest.json` written there is the reconciliation source of truth (DB §7.3).
 
+The cutover into Postgres (DB §7.2 step 2, D-017) uses three more scripts, all run from `backend`:
+
+- **Load** — [`backend/scripts/import-postgres-data.mjs`](../backend/scripts/import-postgres-data.mjs):
+  `DATABASE_URL=<postgres url> node scripts/import-postgres-data.mjs [backup-dir]`. Inserts
+  `profiles` then `tasks` (foreign-key order) with `ON CONFLICT (id) DO NOTHING`, so it is
+  idempotent and safe to re-run. The only conversions are the documented type mappings (D-016);
+  dates normalize to `YYYY-MM-DD` and timestamps round to microsecond on the `timestamptz` cast.
+- **Re-manifest** — [`backend/scripts/remanifest-usec.mjs`](../backend/scripts/remanifest-usec.mjs):
+  `node scripts/remanifest-usec.mjs [backup-dir]`. A backup produced before D-017 carries native
+  100-ns checksums; this recomputes `manifest.json` from the existing CSVs at microsecond precision
+  (preserving the original as `manifest.native.json`), needs no live SQL Server, and leaves the
+  CSVs untouched. Run it once before reconcile.
+- The canonical form — CSV parsing, the microsecond rounding and the SHA-256 checksum — is defined
+  once in [`backend/scripts/lib/canonical.mjs`](../backend/scripts/lib/canonical.mjs) and shared by
+  the export, the re-manifest and the reconcile, so the three never drift (DB §7.3).
+
 ## 3. Environment and configuration
 
 ### Backend env
