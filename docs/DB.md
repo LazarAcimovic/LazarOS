@@ -1,8 +1,9 @@
 # DB
 
-> PostgreSQL, accessed through the `pg` driver with an env-driven `DATABASE_URL`. Raw
-> parameterized SQL, no ORM. Schema and seed in one file (`backend/db/schema.sql`), applied by
-> running the script once against a PostgreSQL database (the engine switch is D-016).
+> PostgreSQL, accessed through **Prisma** — the generated client, with the computed dashboard via
+> parameterized `$queryRaw` — over the `pg` driver with an env-driven `DATABASE_URL`. The datamodel
+> is `prisma/schema.prisma` and schema changes are owned by Prisma Migrate (ORM + migrations: D-018;
+> engine switch: D-016; migrations: §5).
 
 ## 1. ER overview
 

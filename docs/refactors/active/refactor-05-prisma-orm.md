@@ -17,13 +17,13 @@ is only the plan.
 
 #### Baseline — captured before step one
 
-| Measure | Before | After (fill in at the end) |
+| Measure | Before | After |
 |---|---|---|
-| data access | raw parameterized `pg` SQL | |
-| migrations | drop-recreate `schema.sql` | |
-| `cd backend && npm test` | green on raw pg | |
-| `npm run test:e2e` | green on raw pg | |
-| Prisma version pinned | n/a | |
+| data access | raw parameterized `pg` SQL | Prisma Client (dashboard via parameterized `$queryRaw`) |
+| migrations | drop-recreate `schema.sql` | Prisma Migrate (baseline `0_init`, applied) |
+| `cd backend && npm test` | green on raw pg | 63 green through Prisma |
+| `npm run test:e2e` | green on raw pg | 5 green through Prisma |
+| Prisma version pinned | n/a | `7.10.1` (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) |
 
 #### Out of scope
 
@@ -141,7 +141,8 @@ Not in scope: code.
 Docs to update: Tech-Backend §1 (layout + `verified at <sha>`), Tech.md §1.
 Verify: `node scripts/check-docs.mjs` passes; the suite stays green.
 
-- [ ] Layout block regenerated with `prisma/`; `verified at <sha>` updated.
-- [ ] The baseline "After" column is filled in (data access = Prisma, suites green).
-- [ ] No stale "raw SQL / no ORM" claims remain outside Decisions history.
+- [x] Layout block regenerated with `prisma/` and `prisma7.config.ts`; `verified at` updated to 67ce275.
+- [x] The baseline "After" column is filled in (data access = Prisma, suites green).
+- [x] No stale "raw SQL / no ORM" claims remain outside Decisions history (DB header + Tech §5
+      updated; the remaining `schema.sql` mentions describe the legacy file the code-first campaign retires).
 - Commit: `docs(tech): refresh layout after the Prisma migration`

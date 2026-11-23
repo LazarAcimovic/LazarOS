@@ -15,7 +15,7 @@
 
 ## 1. Stack snapshot
 
-> verified at f43a2b8
+> verified at 67ce275
 
 Two deployable tiers in one repository:
 
@@ -200,13 +200,14 @@ script itself.
 
 ## 5. What's intentionally simple
 
-- **No ORM** — see §1 above.
+- **Prisma with a single driver adapter** — see §1–§2 above. The one computed query (the
+  dashboard) stays raw via a parameterized `$queryRaw`; every other path uses the generated client.
 - **One pinned test per tier, no coverage threshold.** The backend has `tests/dashboard.test.js`;
   the frontend has `src/features/tasks/components/TaskCard.test.tsx`. Backfilling is future task
   work; `refactor-02` only installed the frameworks and added one test each.
-- **One shared PostgreSQL pool, env-driven `DATABASE_URL`, drop-recreate schema.** This is a
-  single-developer setup. Replacing the drop-recreate script with real migrations remains a
-  tracked concern.
+- **One shared PostgreSQL pool, env-driven `DATABASE_URL`.** This is a single-developer setup; the
+  pool backs both the test schema setup and the Prisma adapter. Schema changes go through Prisma
+  Migrate (DB §5); the legacy drop-recreate `schema.sql` is retired by the code-first campaign.
 - **No rate limiting, no CSRF tokens, no account lockout.** `SameSite=Strict` on the JWT cookie
   is the only CSRF mitigation ([generateToken.js:10](../backend/utils/generateToken.js)). PRD §6
   documents the security posture; expanding it is out of scope.

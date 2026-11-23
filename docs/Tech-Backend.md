@@ -19,21 +19,25 @@
 
 ## 1. Project layout
 
-> verified at f43a2b8
+> verified at 67ce275
 
 ```
 backend/
 ├── config/
-│   └── db.js                     # pg pool singleton (from DATABASE_URL)
+│   ├── db.js                     # pg pool singleton (from DATABASE_URL)
+│   └── prisma.js                 # Prisma Client singleton (pg adapter on the shared pool)
 ├── controllers/
-│   ├── authController.js         # register / login / logout / me
-│   └── taskController.js         # dashboard / upcoming / all / archive / CRUD / restore
+│   ├── authController.js         # register / login / logout / me  (via Prisma)
+│   └── taskController.js         # dashboard (raw $queryRaw) / upcoming / all / archive / CRUD / restore
 ├── db/
-│   └── schema.sql                # drop-recreate schema + seed
+│   └── schema.sql                # legacy drop-recreate schema + seed (retired by the code-first campaign)
 ├── middleware/
 │   ├── asyncHandler.js           # async error adapter
 │   ├── errorMiddleware.js        # notFound + central errorHandler
-│   └── protect.js                # cookie-based JWT auth
+│   └── protect.js                # cookie-based JWT auth (via Prisma)
+├── prisma/
+│   ├── schema.prisma             # datamodel (introspected; Prisma Migrate owns it)
+│   └── migrations/               # 0_init baseline + migration_lock.toml
 ├── routes/
 │   ├── authRoutes.js
 │   └── taskRoutes.js
@@ -43,6 +47,7 @@ backend/
 │   ├── authSchemas.js            # Zod — register, login
 │   └── taskSchemas.js            # Zod — create, update
 ├── package.json
+├── prisma7.config.ts             # Prisma CLI config (loads .env; DATABASE_URL)
 └── server.js                     # app bootstrap
 ```
 
