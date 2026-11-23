@@ -10,5 +10,5 @@ Progress counts subtasks; a subtask counts as done only when every one of its bo
 | Campaign | Title | Progress | What's left | Depends on | Blocks | File |
 |---|---|---|---|---|---|---|
 | refactor-01 | Split global.css by concern | 0/1 | 1006-line monolith + no CSS module layout | — | — | [refactor-01-split-global-css.md](refactor-01-split-global-css.md) |
-| refactor-05 | Replace raw SQL with Prisma ORM | 2/6 | port auth + task controllers to Prisma | refactor-04 | task-05 | [refactor-05-prisma-orm.md](refactor-05-prisma-orm.md) |
+| refactor-05 | Replace raw SQL with Prisma ORM | 3/6 | port task CRUD + dashboard to Prisma | refactor-04 | task-05 | [refactor-05-prisma-orm.md](refactor-05-prisma-orm.md) |
 | refactor-06 | Transform frontend to the React 19 feature-sliced stack | 0/8 | stack upgrade, restructure, rebuild on shadcn | refactor-02, refactor-03 | — | [refactor-06-frontend-transformation.md](refactor-06-frontend-transformation.md) |

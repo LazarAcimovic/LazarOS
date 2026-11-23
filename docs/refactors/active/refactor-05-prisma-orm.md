@@ -90,10 +90,11 @@ Not in scope: task controllers (R05.4–R05.5). Changing responses or status cod
 Docs to update: Tech-Backend §2 if the data-access description changes.
 Verify: `cd backend && npm test` — the auth integration suite is green through Prisma.
 
-- [ ] `register`, `login`, `me` and `protect`'s user lookup go through `prisma.profiles`; no raw
-      SQL remains in the auth path.
-- [ ] Responses are byte-for-byte equivalent (password omitted; same error strings, including the
-      identical login failure message).
+- [x] `register`, `login`, `me` and `protect`'s user lookup go through `prisma.profiles`; no raw
+      SQL remains in the auth path. The shared client is `config/prisma.js` (pg adapter on the
+      `config/db.js` pool).
+- [x] Responses are byte-for-byte equivalent (password omitted; same error strings, including the
+      identical login failure message); the auth integration suite is green through Prisma.
 - Commit: `refactor(backend): port auth controller to Prisma`
 
 ---

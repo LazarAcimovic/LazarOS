@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import asyncHandler from "./asyncHandler.js";
-import { getPool } from "../config/db.js";
+import { getPrisma } from "../config/prisma.js";
 
 export const protect = asyncHandler(async (req, res, next) => {
   const token = req.cookies.jwt;
@@ -16,16 +16,16 @@ export const protect = asyncHandler(async (req, res, next) => {
     throw new Error("Not authorized, token failed");
   }
 
-  const pool = await getPool();
-  const result = await pool.query(
-    "SELECT id, first_name, last_name, email, created_at FROM profiles WHERE id = $1",
-    [decoded.userId]
-  );
+  const prisma = await getPrisma();
+  const user = await prisma.profiles.findUnique({
+    where: { id: decoded.userId },
+    select: { id: true, first_name: true, last_name: true, email: true, created_at: true },
+  });
 
-  if (result.rows.length === 0) {
+  if (!user) {
     res.status(401);
     throw new Error("Not authorized, user not found");
   }
-  req.user = result.rows[0];
+  req.user = user;
   next();
 });

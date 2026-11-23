@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import asyncHandler from "../middleware/asyncHandler.js";
-import { getPool } from "../config/db.js";
+import { getPrisma } from "../config/prisma.js";
 import generateToken from "../utils/generateToken.js";
 import { registerSchema, loginSchema } from "../validation/authSchemas.js";
 
@@ -15,30 +15,25 @@ export const register = asyncHandler(async (req, res) => {
   }
   const { first_name, last_name, email, password } = parsed.data;
 
-  const pool = await getPool();
+  const prisma = await getPrisma();
 
-  const existing = await pool.query(
-    "SELECT id FROM profiles WHERE email = $1",
-    [email]
-  );
+  const existing = await prisma.profiles.findUnique({
+    where: { email },
+    select: { id: true },
+  });
 
-  if (existing.rows.length > 0) {
+  if (existing) {
     res.status(400);
     throw new Error("Email already in use");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const result = await pool.query(
-    `
-      INSERT INTO profiles (first_name, last_name, email, password)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, first_name, last_name, email, created_at
-    `,
-    [first_name, last_name, email, hashedPassword]
-  );
+  const user = await prisma.profiles.create({
+    data: { first_name, last_name, email, password: hashedPassword },
+    select: { id: true, first_name: true, last_name: true, email: true, created_at: true },
+  });
 
-  const user = result.rows[0];
   generateToken(res, user.id);
   res.status(201).json(user);
 });
@@ -54,18 +49,14 @@ export const login = asyncHandler(async (req, res) => {
   }
   const { email, password } = parsed.data;
 
-  const pool = await getPool();
-  const result = await pool.query(
-    "SELECT id, first_name, last_name, email, password, created_at FROM profiles WHERE email = $1",
-    [email]
-  );
+  const prisma = await getPrisma();
+  const user = await prisma.profiles.findUnique({ where: { email } });
 
-  if (result.rows.length === 0) {
+  if (!user) {
     res.status(401);
     throw new Error("Invalid email or password");
   }
 
-  const user = result.rows[0];
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
     res.status(401);
