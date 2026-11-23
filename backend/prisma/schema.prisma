@@ -14,6 +14,7 @@ model profiles {
   password   String   @db.VarChar(255)
   created_at DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
   tasks      tasks[]
+  password_reset_tokens password_reset_tokens[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -35,4 +36,17 @@ model tasks {
   @@index([status], map: "IX_tasks_status")
   @@index([user_id, is_deleted, status, due_date], map: "IX_tasks_user_active")
   @@index([user_id], map: "IX_tasks_user_id")
+}
+
+// Single-use password-reset tokens (task-05). Only the token HASH is stored, never the raw token
+// (PRD §7); the unique index on token_hash supports the lookup. No cascade — there is no profile
+// delete. Added code-first: edit this model, then `prisma migrate dev` (D-019).
+model password_reset_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique @db.VarChar(255)
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_password_reset_tokens_profiles")
 }

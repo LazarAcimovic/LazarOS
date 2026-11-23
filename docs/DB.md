@@ -64,6 +64,28 @@ Defined in `prisma/schema.prisma` (applied by migration `0_init`).
 | `IX_tasks_status` | `(status)` | Status filtering |
 | `IX_tasks_user_active` | `(user_id, is_deleted, status, due_date)` | Covers the dashboard query ([taskController.js:21-47](../backend/controllers/taskController.js)) |
 
+### 2.4 `password_reset_tokens`
+
+Defined in `prisma/schema.prisma` (applied by migration `20261123124306_add_password_reset_tokens`).
+This table was the **first change authored code-first** — added to the datamodel and migrated with
+`prisma migrate dev` (D-019). It stores single-use, expiring password-reset tokens.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | PK |
+| `user_id` | `uuid` | NO | — | FK → `profiles(id)`, no cascade (there is no profile delete) |
+| `token_hash` | `varchar(255)` | NO | — | `UNIQUE`; the **hash** of the token — the raw token is never stored |
+| `expires_at` | `timestamptz` | NO | — | token expiry |
+| `used_at` | `timestamptz` | YES | — | stamped when the token is consumed (single-use) |
+| `created_at` | `timestamptz` | NO | `now() at time zone 'utc'` | UTC |
+
+Constraints: `PK(id)`, `UNIQUE(token_hash)` (also the lookup index),
+`FK_password_reset_tokens_profiles FOREIGN KEY(user_id) REFERENCES profiles(id)`.
+
+> The table exists ahead of the feature: only the model has landed, as the code-first
+> demonstration. The forgot-password flow that reads and writes it — the endpoints, the Resend
+> email, the screens and the token TTL / cooldown rules — is **task-05**, not yet built.
+
 ## 3. Relationships and delete behaviour
 
 - `tasks.user_id → profiles.id` — foreign key, no cascade declared. Deleting a profile would
