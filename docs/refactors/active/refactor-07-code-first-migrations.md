@@ -27,11 +27,11 @@ this way)
 
 | Measure | Before | After |
 |---|---|---|
-| schema definitions | 5 (schema.prisma, schema.sql, 3 suites' inline DDL; e2e reads schema.sql) | |
-| `backend/db/schema.sql` | present (source of truth + seed) | |
-| `cd backend && npm test` | 63 passing | |
-| `npm run test:e2e` | 5 passing | |
-| demo seed | SQL in `schema.sql` | |
+| schema definitions | 5 (schema.prisma, schema.sql, 3 suites' inline DDL; e2e reads schema.sql) | 1 — `prisma/schema.prisma` → migrations, applied everywhere |
+| `backend/db/schema.sql` | present (source of truth + seed) | deleted (D-019) |
+| `cd backend && npm test` | 63 passing | 63 passing (schema from migrations) |
+| `npm run test:e2e` | 5 passing | 5 passing (schema from migrations) |
+| demo seed | SQL in `schema.sql` | `prisma/seed.mjs` (Prisma client) |
 
 #### Out of scope
 
@@ -108,7 +108,9 @@ Not in scope: code.
 Docs to update: Tech-Backend §1 (layout: no `db/schema.sql`, add `prisma/seed.mjs`; `verified at`).
 Verify: `node scripts/check-docs.mjs`; both suites stay green.
 
-- [ ] Layout block regenerated from a real directory listing; `verified at` updated.
-- [ ] The baseline "After" column is filled in (one schema source; `schema.sql` gone; suites green).
-- [ ] No doc or script references `backend/db/schema.sql`.
+- [x] Layout block regenerated from a real directory listing (no `db/`, adds `prisma/seed.mjs`);
+      `verified at` updated to cd338ae.
+- [x] The baseline "After" column is filled in (one schema source; `schema.sql` gone; suites green).
+- [x] No source doc or script references `backend/db/schema.sql` as a live file; the only remaining
+      mentions are the historical D-017 record and this campaign's own before-state description.
 - Commit: `docs(tech): refresh layout after retiring schema.sql`

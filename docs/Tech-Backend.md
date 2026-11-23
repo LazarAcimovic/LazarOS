@@ -19,7 +19,7 @@
 
 ## 1. Project layout
 
-> verified at 67ce275
+> verified at cd338ae
 
 ```
 backend/
@@ -29,15 +29,14 @@ backend/
 ├── controllers/
 │   ├── authController.js         # register / login / logout / me  (via Prisma)
 │   └── taskController.js         # dashboard (raw $queryRaw) / upcoming / all / archive / CRUD / restore
-├── db/
-│   └── schema.sql                # legacy drop-recreate schema + seed (retired by the code-first campaign)
 ├── middleware/
 │   ├── asyncHandler.js           # async error adapter
 │   ├── errorMiddleware.js        # notFound + central errorHandler
 │   └── protect.js                # cookie-based JWT auth (via Prisma)
 ├── prisma/
-│   ├── schema.prisma             # datamodel (introspected; Prisma Migrate owns it)
-│   └── migrations/               # 0_init baseline + migration_lock.toml
+│   ├── schema.prisma             # datamodel — the single schema source (Prisma Migrate owns it)
+│   ├── migrations/               # 0_init baseline + migration_lock.toml
+│   └── seed.mjs                  # demo seed (code-first replacement for schema.sql)
 ├── routes/
 │   ├── authRoutes.js
 │   └── taskRoutes.js
