@@ -64,6 +64,11 @@ request
 Every controller is wrapped in `asyncHandler` ([middleware/asyncHandler.js](../backend/middleware/asyncHandler.js))
 so a rejected promise forwards to `errorHandler` — no `try/catch` boilerplate in controllers.
 
+**Data access.** Controllers read and write through the generated **Prisma Client** — a singleton
+imported where the raw `pg` pool used to be — never hand-written SQL, with one carve-out: the
+computed dashboard query (DB §6) runs as a parameterized `prisma.$queryRaw` tagged template
+(D-018). The datamodel is `prisma/schema.prisma` and `prisma migrate` owns schema changes (DB §5).
+
 ## 3. Authorization layering
 
 - **Public routes:** `POST /api/auth/register`, `POST /api/auth/login`

@@ -35,10 +35,12 @@ From [backend/package.json](../backend/package.json):
 | `cookie-parser` | `^1.4.6` | Parses the `jwt` cookie into `req.cookies` |
 | `jsonwebtoken` | `^9.0.2` | Signs and verifies the JWT in the cookie |
 | `bcrypt` | `^5.1.1` | Password hashing (cost 10) |
-| `pg` | `^8.16.3` | PostgreSQL driver — one shared `Pool` built from `DATABASE_URL` |
+| `pg` | `^8.16.3` | PostgreSQL driver — shared `Pool` from `DATABASE_URL`; retained for the test-suite schema setup and the dashboard `$queryRaw` |
+| `@prisma/client` | `7.10.1` | Prisma Client — generated, typed data-access layer; replaces the hand-written SQL (D-018) |
 | `zod` | `^3.23.8` | Request validation |
 | `dotenv` | `^16.4.5` | Loads `.env` on startup |
 | `nodemon` (dev) | `^3.1.4` | Reload-on-change dev loop |
+| `prisma` (dev) | `7.10.1` | Prisma CLI — datamodel, introspection (`db pull`) and migrations (`migrate`) (D-018) |
 | `vitest` (dev) | `^5.1.1` | Test runner |
 | `supertest` (dev) | `^7.3.2` | HTTP integration test client |
 
@@ -64,8 +66,6 @@ From [frontend/package.json](../frontend/package.json):
 
 ### Deliberately not installed
 
-- **No ORM.** All DB access is raw parameterized SQL (Postgres dialect) through the shared pool.
-  Adding one is `refactor-05` (Prisma), which lands on top of this migration.
 - **No linter or formatter.** No `eslint`/`prettier` config in either tier.
 - **No pre-commit tooling** before this documentation system (the hook in `.githooks/pre-commit`
   runs only the docs check; see §4).
@@ -80,8 +80,11 @@ From [frontend/package.json](../frontend/package.json):
   regardless of the server's own zone (Tech-Backend §8).
 - **Connection string:** `DATABASE_URL` (e.g. `postgres://user:pass@localhost:5432/LazarOS`),
   read from the environment — nothing is hardcoded (the engine switch and env move are D-016).
-- **Schema file:** [backend/db/schema.sql](../backend/db/schema.sql). Drop-and-recreate; no
-  migration framework. Documented in `DB.md` §5.
+- **ORM:** [Prisma](https://www.prisma.io/) `7.10.1` (D-018). The generated Prisma Client is the
+  data-access layer; the datamodel lives in `prisma/schema.prisma` and `prisma migrate` owns schema
+  changes (DB §5). The one computed path (the dashboard, DB §6) stays raw via a parameterized
+  `prisma.$queryRaw`. The legacy [backend/db/schema.sql](../backend/db/schema.sql) is retained only
+  until the code-first migration workflow fully supersedes it.
 - **Test database:** a separate PostgreSQL database `LazarOS_Test` on the same server as dev,
   selected via `DATABASE_URL` set to `TEST_DATABASE_URL` by `vitest.config.js`. No Docker.
   Details in `Tech-Backend.md` §9.
@@ -89,8 +92,10 @@ From [frontend/package.json](../frontend/package.json):
   schema-loaded (tables + indexes only) per run by
   [frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs). Separate from the dev and test
   databases. Details in `Tech-Frontend.md` §9.
-- **Query style:** every call goes through `pool.query(text, params)` with `$1…$n` positional
-  parameters, never string interpolation. This is the SQL-injection boundary (PRD §6).
+- **Query style:** data access goes through the Prisma Client (`prisma.profiles`, `prisma.tasks`),
+  which parameterizes every query. The single raw path (the dashboard) uses a **parameterized**
+  `prisma.$queryRaw` tagged template — bind parameters, never string interpolation. This is the
+  SQL-injection boundary (PRD §6).
 
 ### Backup and data-preservation artifacts
 

@@ -258,3 +258,35 @@ JavaScript (the shared `backend/scripts/lib/canonical.mjs`), matching the Postgr
 (verified across boundary and tie cases, including second-carry).
 
 **Lives in:** DB §7.1, §7.3, Tech §2
+
+### D-018 — Data access and migrations: Prisma ORM (introspect-then-baseline; pinned 7.10.1; dashboard stays `$queryRaw`)
+
+**Decided:** 2026-11-23 · **Status:** Accepted
+**Answer:** `refactor-05` replaces the hand-written `pg` SQL with **Prisma**. The generated Prisma
+Client is the data-access layer for every auth and task path; **Prisma Migrate** owns schema
+changes. The existing Postgres schema (D-016) is adopted **without data loss** by *baselining*:
+`prisma db pull` introspects it into `prisma/schema.prisma`, then a baseline migration is generated
+with `prisma migrate diff --from-empty --to-schema-datamodel` and marked already-applied with
+`prisma migrate resolve --applied`, so Prisma never drops or recreates the live tables. The API
+contract and every product rule are unchanged — the `refactor-03` suite is the proof and stays
+green through each subtask.
+
+**Pinned version: `7.10.1`** (both `prisma` and `@prisma/client`). At the time of writing npm's
+`latest` tag points at `8.0.0-rc.35`, a release candidate; Prisma 7 is the current stable line
+(security + bug fixes for ~18 months past the 8 GA), so `7.10.1` is the newest *stable* release.
+Prisma has no "LTS" channel — that concept does not exist for Prisma.
+
+**The dashboard stays raw.** The computed query (DB §6) — the `CASE`-based `section` bucket and the
+`days_overdue` date subtraction — is not expressible ergonomically in the Prisma query builder, so
+it runs as a **parameterized** `prisma.$queryRaw` tagged template (bind parameters, never string
+interpolation). It is the only raw SQL left in the backend.
+
+**This reverses an earlier stance.** PRD §10 previously listed "ORM" and "migrations framework" as
+out of scope; both are adopted here. `pg` is retained for the test-suite schema setup, the e2e
+runner and the dashboard `$queryRaw`.
+
+**Lives in:** Tech §1, §2 · Tech-Backend §2 · DB §5 · PRD §10
+**Why:** Raw SQL scattered across controllers is untyped and easy to get subtly wrong; an ORM gives
+a typed client, one datamodel and a real migration history (incremental, replayable, no data wipe)
+in place of the drop-and-recreate `schema.sql`. Prisma introspects an existing Postgres database
+cleanly, so the move is additive and provable against the behaviour suite.

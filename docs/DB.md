@@ -87,11 +87,23 @@ the live rows is a separate procedure (DB §7, D-015).
 
 ## 5. Migrations
 
-There is no migrations framework. The entire schema and seed live in one file
-(`backend/db/schema.sql`) that drops and recreates tables; see the
-`DROP TABLE IF EXISTS … CASCADE` guards in `backend/db/schema.sql` (`tasks` before `profiles`,
-so the foreign key does not block the drop). Replacing this with a real migration tool is a
-separate, tracked concern.
+Schema changes are owned by **Prisma Migrate** (`prisma` `7.10.1`, D-018). The datamodel is
+`prisma/schema.prisma`; `prisma migrate dev` diffs it against the applied history and writes a
+timestamped SQL migration under `prisma/migrations/`, which `prisma migrate deploy` replays
+verbatim on any database — incremental and non-destructive, unlike the old drop-and-recreate.
+
+The existing Postgres schema (D-016) was adopted **without data loss** by *baselining*
+(`refactor-05`): `prisma db pull` introspected it into the datamodel, then a baseline migration
+(`0_init`) was generated with `prisma migrate diff` and marked already-applied with
+`prisma migrate resolve --applied`, so Prisma never drops or recreates the live tables.
+
+The legacy drop-and-recreate file [backend/db/schema.sql](../backend/db/schema.sql) is retained
+only until the code-first migration workflow fully supersedes it.
+
+**Test / E2E databases.** The backend test suites and the e2e runner still build their tables
+directly before each run (each suite's `beforeAll`;
+[frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs)) against the separate `LazarOS_Test` /
+`LazarOS_E2E` databases (Tech-Backend §9, Tech-Frontend §9) — never the dev database.
 
 ## 6. Query cheat-sheet
 

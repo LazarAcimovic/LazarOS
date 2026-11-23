@@ -262,5 +262,6 @@ documented beyond that.
 - **Hard delete.** Everything soft-deletes; nothing ever leaves the database.
 - **Changing the hashing policy, the JWT lifetime, or the CSRF posture.** Those three are
   decisions the system treats as settled (see Decisions D-006, D-007, D-008).
-- **ORM, migrations framework, test framework.** Known refactor campaigns; not in scope of
-  routine feature work.
+- **Frontend test framework.** A known refactor campaign; not in scope of routine feature work.
+  (The ORM and migrations framework are now adopted — Prisma Migrate, D-018; the backend test
+  framework is Vitest.)
