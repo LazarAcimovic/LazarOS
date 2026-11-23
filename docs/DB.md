@@ -18,7 +18,7 @@ user.
 
 ### 2.1 `profiles`
 
-Defined in [backend/db/schema.sql:21-28](../backend/db/schema.sql).
+Defined in [backend/db/schema.sql](../backend/db/schema.sql).
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -33,7 +33,7 @@ Constraints: `PK(id)`, `UNIQUE(email)`.
 
 ### 2.2 `tasks`
 
-Defined in [backend/db/schema.sql:32-47](../backend/db/schema.sql).
+Defined in [backend/db/schema.sql](../backend/db/schema.sql).
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -54,7 +54,7 @@ Constraints: `PK(id)`, `FK_tasks_profiles FOREIGN KEY(user_id) REFERENCES profil
 
 ### 2.3 Indexes on `tasks`
 
-Defined in [backend/db/schema.sql:51-54](../backend/db/schema.sql).
+Defined in [backend/db/schema.sql](../backend/db/schema.sql).
 
 | Index | Columns | Purpose |
 |---|---|---|

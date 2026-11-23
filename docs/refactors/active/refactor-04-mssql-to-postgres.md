@@ -102,11 +102,11 @@ Docs to update: DB §5 (the file now holds Postgres DDL), Tech-Backend §1 if th
 Verify: the schema applies cleanly to a fresh Postgres database and every column type, default,
 constraint and index matches DB.md.
 
-- [ ] `profiles` and `tasks` recreated with `uuid` PKs defaulting to `gen_random_uuid()`,
+- [x] `profiles` and `tasks` recreated with `uuid` PKs defaulting to `gen_random_uuid()`,
       `text`/`varchar(n)` per DB.md, `boolean` `is_deleted`, `timestamptz` timestamps.
-- [ ] `CHECK (priority in …)`, `CHECK (status in …)`, `UNIQUE(email)`, the `FK_tasks_profiles`
+- [x] `CHECK (priority in …)`, `CHECK (status in …)`, `UNIQUE(email)`, the `FK_tasks_profiles`
       foreign key, and all indexes including `IX_tasks_user_active` are present.
-- [ ] Drop-recreate guards work on Postgres (`DROP TABLE IF EXISTS … CASCADE` ordering).
+- [x] Drop-recreate guards work on Postgres (`DROP TABLE IF EXISTS … CASCADE` ordering).
 - Commit: `feat(db): PostgreSQL schema and indexes`
 
 ---
