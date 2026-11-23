@@ -72,11 +72,11 @@ Not in scope: changing any assertion or the e2e runner (R07.3). Any product beha
 Docs to update: Tech-Backend §9 if the helper name settles differently.
 Verify: `cd backend && npm test` — 63 green against the migrated schema.
 
-- [ ] A shared `tests/setup/resetSchema.js` drops the `public` schema and applies every
+- [x] A shared `tests/setup/resetSchema.js` drops the `public` schema and applies every
       `prisma/migrations/*/migration.sql` in order (the same SQL `migrate deploy` would).
-- [ ] `auth.test.js`, `tasks.test.js`, `dashboard.test.js` call `resetSchema` in `beforeAll`; no
-      inline `CREATE TABLE` DDL remains in the suites.
-- [ ] The suite is green; the schema the tests run against is exactly the migrated one.
+- [x] `auth.test.js`, `tasks.test.js`, `dashboard.test.js` call `resetSchema` in `beforeAll`; no
+      inline `CREATE TABLE` DDL remains in the suites (grep confirms zero).
+- [x] The suite is green (63); the schema the tests run against is exactly the migrated one.
 - Commit: `test(backend): apply prisma migrations instead of inline schema DDL`
 
 ---

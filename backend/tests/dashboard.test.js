@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { randomUUID } from "crypto";
 import { app } from "../app.js";
 import { getPool, closePool } from "../config/db.js";
+import { resetSchema } from "./setup/resetSchema.js";
 
 // Fixed reference date for all assertions in this suite.
 const TODAY = "2026-01-15";
@@ -19,41 +20,8 @@ describe("GET /api/tasks/dashboard", () => {
   beforeAll(async () => {
     const pool = await getPool();
 
-    // Drop and recreate tables so the test always starts clean.
-    await pool.query(`
-      DROP TABLE IF EXISTS tasks    CASCADE;
-      DROP TABLE IF EXISTS profiles CASCADE;
-    `);
-
-    await pool.query(`
-      CREATE TABLE profiles (
-        id         uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-        first_name varchar(100) NOT NULL,
-        last_name  varchar(100) NOT NULL,
-        email      varchar(255) NOT NULL UNIQUE,
-        password   varchar(255) NOT NULL,
-        created_at timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE tasks (
-        id           uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id      uuid         NOT NULL,
-        title        varchar(255) NOT NULL,
-        description  text         NULL,
-        due_date     date         NOT NULL,
-        priority     varchar(10)  NOT NULL DEFAULT 'medium'
-                       CHECK (priority IN ('low','medium','high')),
-        status       varchar(10)  NOT NULL DEFAULT 'pending'
-                       CHECK (status IN ('pending','completed')),
-        is_deleted   boolean      NOT NULL DEFAULT false,
-        completed_at timestamptz  NULL,
-        created_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-        updated_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-        CONSTRAINT "FK_tasks_profiles" FOREIGN KEY (user_id) REFERENCES profiles(id)
-      );
-    `);
+    // Reset to the migrated schema so the test always starts clean (code-first, D-019).
+    await resetSchema(pool);
 
     // Test user
     await pool.query(

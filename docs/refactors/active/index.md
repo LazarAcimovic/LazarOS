@@ -11,4 +11,4 @@ Progress counts subtasks; a subtask counts as done only when every one of its bo
 |---|---|---|---|---|---|---|
 | refactor-01 | Split global.css by concern | 0/1 | 1006-line monolith + no CSS module layout | — | — | [refactor-01-split-global-css.md](refactor-01-split-global-css.md) |
 | refactor-06 | Transform frontend to the React 19 feature-sliced stack | 0/8 | stack upgrade, restructure, rebuild on shadcn | refactor-02, refactor-03 | — | [refactor-06-frontend-transformation.md](refactor-06-frontend-transformation.md) |
-| refactor-07 | Adopt the Prisma Migrate code-first workflow | 1/4 | tests + e2e apply migrations; retire schema.sql | refactor-05 | — | [refactor-07-code-first-migrations.md](refactor-07-code-first-migrations.md) |
+| refactor-07 | Adopt the Prisma Migrate code-first workflow | 2/4 | e2e migrations + seed; retire schema.sql | refactor-05 | — | [refactor-07-code-first-migrations.md](refactor-07-code-first-migrations.md) |

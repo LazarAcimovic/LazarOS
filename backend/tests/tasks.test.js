@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { randomUUID } from "crypto";
 import { app } from "../app.js";
 import { getPool, closePool } from "../config/db.js";
+import { resetSchema } from "./setup/resetSchema.js";
 
 // PRD §4.3–§4.11 task surface, §4.13 missing `today`, §7 isolation; DB §6 dashboard cases.
 const TODAY = "2026-01-15";
@@ -66,38 +67,7 @@ const titlesOf = (rows) => rows.map((r) => r.title);
 describe("task surface", () => {
   beforeAll(async () => {
     const pool = await getPool();
-    await pool.query(`
-      DROP TABLE IF EXISTS tasks    CASCADE;
-      DROP TABLE IF EXISTS profiles CASCADE;
-    `);
-    await pool.query(`
-      CREATE TABLE profiles (
-        id         uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-        first_name varchar(100) NOT NULL,
-        last_name  varchar(100) NOT NULL,
-        email      varchar(255) NOT NULL UNIQUE,
-        password   varchar(255) NOT NULL,
-        created_at timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
-      );
-    `);
-    await pool.query(`
-      CREATE TABLE tasks (
-        id           uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id      uuid         NOT NULL,
-        title        varchar(255) NOT NULL,
-        description  text         NULL,
-        due_date     date         NOT NULL,
-        priority     varchar(10)  NOT NULL DEFAULT 'medium'
-                       CHECK (priority IN ('low','medium','high')),
-        status       varchar(10)  NOT NULL DEFAULT 'pending'
-                       CHECK (status IN ('pending','completed')),
-        is_deleted   boolean      NOT NULL DEFAULT false,
-        completed_at timestamptz  NULL,
-        created_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-        updated_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-        CONSTRAINT "FK_tasks_profiles" FOREIGN KEY (user_id) REFERENCES profiles(id)
-      );
-    `);
+    await resetSchema(pool);
 
     for (const [name, id] of Object.entries(users)) {
       await pool.query(
