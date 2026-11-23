@@ -1,4 +1,10 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Props {
   title: string;
@@ -7,37 +13,24 @@ interface Props {
 }
 
 export default function Modal({ title, onClose, children }: Props) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent
         aria-modal="true"
         aria-labelledby="modal-title"
+        aria-describedby={undefined}
+        className="bg-card"
       >
-        <div className="modal__header">
-          <h2 className="modal__title" id="modal-title">
-            {title}
-          </h2>
-          <button
-            className="modal__close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-        <div className="modal__body">{children}</div>
-      </div>
-    </div>
+        <DialogHeader>
+          <DialogTitle id="modal-title">{title}</DialogTitle>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
   );
 }

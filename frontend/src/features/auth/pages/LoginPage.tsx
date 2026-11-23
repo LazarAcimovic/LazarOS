@@ -1,40 +1,35 @@
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { apiLogin } from "../api";
-import { loginSchema } from "../validation";
+import { loginSchema, type LoginFormValues } from "../models";
 import { useAuthStore } from "@/store/authStore";
 import { APP_ROUTES } from "@/config/constants";
 import { getApiError } from "@/shared/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setUser, setLoading } = useAuthStore();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
   const [serverError, setServerError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-    setServerError("");
-
-    const result = loginSchema.safeParse({ email, password });
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        const key = String(err.path[0]);
-        fieldErrors[key] = err.message;
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
+  const onValid = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
-      const user = await apiLogin(result.data);
+      const user = await apiLogin(values);
       setUser(user);
       setLoading(false);
       navigate(APP_ROUTES.TODAY);
@@ -46,60 +41,69 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth">
-      <div className="auth__card">
-        <h1 className="auth__title">LazarOS</h1>
-        <p className="auth__subtitle">Sign in to your workspace</p>
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="w-full max-w-105 rounded-lg border border-border bg-card p-10 shadow-lg">
+        <h1 className="mb-1 text-3xl font-extrabold text-primary">LazarOS</h1>
+        <p className="mb-7 text-sm text-muted-foreground">
+          Sign in to your workspace
+        </p>
 
-        <form className="auth__form" onSubmit={handleSubmit} noValidate>
-          {serverError && <div className="auth__error">{serverError}</div>}
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            setServerError("");
+            return handleSubmit(onValid)(e);
+          }}
+          noValidate
+        >
+          {serverError && (
+            <div data-auth-error className="rounded-sm border border-overdue-border bg-overdue-bg px-3.5 py-2.5 text-sm text-overdue-text">
+              {serverError}
+            </div>
+          )}
 
-          <div className="form-group">
-            <label className="form-group__label" htmlFor="email">
-              Email
-            </label>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
               id="email"
-              className={`form-group__input${errors.email ? " form-group__input--error" : ""}`}
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              aria-invalid={errors.email ? true : undefined}
+              {...register("email")}
             />
             {errors.email && (
-              <span className="form-group__error">{errors.email}</span>
+              <span className="text-xs text-destructive">
+                {errors.email.message}
+              </span>
             )}
           </div>
 
-          <div className="form-group">
-            <label className="form-group__label" htmlFor="password">
-              Password
-            </label>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
               id="password"
-              className={`form-group__input${errors.password ? " form-group__input--error" : ""}`}
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              aria-invalid={errors.password ? true : undefined}
+              {...register("password")}
             />
             {errors.password && (
-              <span className="form-group__error">{errors.password}</span>
+              <span className="text-xs text-destructive">
+                {errors.password.message}
+              </span>
             )}
           </div>
 
-          <button
-            className="btn btn--primary btn--full"
-            type="submit"
-            disabled={isLoading}
-          >
+          <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign In"}
-          </button>
+          </Button>
         </form>
 
-        <p className="auth__switch">
+        <p className="mt-5 text-center text-[13px] text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link to={APP_ROUTES.REGISTER}>Register</Link>
+          <Link to={APP_ROUTES.REGISTER} className="font-medium text-primary">
+            Register
+          </Link>
         </p>
       </div>
     </div>

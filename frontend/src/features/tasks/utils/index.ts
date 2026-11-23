@@ -1,3 +1,21 @@
+import type { Task, DashboardTask, DashboardData } from "../models";
+
+function mapDate(s: string): string {
+  return s ? s.substring(0, 10) : s;
+}
+
+export function mapTask<T extends Task>(t: T): T {
+  return { ...t, due_date: mapDate(t.due_date) };
+}
+
+export function mapDashboard(d: DashboardData): DashboardData {
+  return {
+    overdue: d.overdue.map(mapTask<DashboardTask>),
+    today: d.today.map(mapTask<DashboardTask>),
+    completed_today: d.completed_today.map(mapTask<DashboardTask>),
+  };
+}
+
 export function getLocalToday(): string {
   const d = new Date();
   const year = d.getFullYear();

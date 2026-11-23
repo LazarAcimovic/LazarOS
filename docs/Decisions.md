@@ -312,3 +312,40 @@ datamodel merely mirroring the database. Code-first makes the migrations the one
 change is authored once in `schema.prisma`, turned into a reviewable migration, and replayed
 identically in every environment — which is also what `task-05` needs to add `password_reset_tokens`
 as a tracked migration.
+
+### D-020 — Frontend adopts the reference pattern set (React 19 + Tailwind/shadcn, feature-sliced); no refresh token
+
+**Decided:** 2026-11-23 · **Status:** Accepted
+**Answer:** `refactor-06` rebuilds the frontend on one standard stack: **React 19.2 + React
+Compiler, Vite 8, react-router-dom v7 (data router), Zustand 5, Tailwind v4 + shadcn/radix,
+lucide-react, Zod, Vitest + jsdom + Testing Library + MSW**, in the feature-sliced layout defined
+in Tech-Frontend §1. Behaviour is frozen; only the visual layer and the code structure change.
+Two parts of the reference pattern set deliberately do **not** transfer:
+
+1. **No refresh token, no silent retry.** The reference client silently refreshes on 401. LazarOS
+   has a single 30-day JWT and no refresh token (D-007); the client keeps "401 → redirect to
+   `/login`" (Tech-Frontend §3). A refresh flow would be a new product rule and needs its own decision.
+2. **Tailwind removes `global.css`.** The BEM stylesheet is deleted once Tailwind covers every
+   screen, which **supersedes `refactor-01`** (split `global.css`); that campaign is closed or
+   re-pointed when R06.7 lands.
+
+**Lives in:** Tech-Frontend §1–§9 · UI §1, §9 · Tech §1
+**Why:** The previous stack (React 18, router v6, one 1006-line BEM file, no component library)
+made every new screen hand-rolled CSS. A shared token system plus accessible shadcn primitives
+removes that, and the slice conventions give task-05's new screens a ready home. The refresh-token
+caveat is recorded so a future reader of the reference pattern does not re-add it by reflex.
+
+### D-021 — `ConfirmDialog` stays a `Dialog` (role="dialog"), not a radix `AlertDialog`
+
+**Decided:** 2026-11-23 · **Status:** Accepted
+**Answer:** The shadcn rebuild (`refactor-06` R06.5) builds `ConfirmDialog` on the `Dialog`
+primitive, so the delete confirmation keeps `role="dialog"`. It is **not** built on radix
+`AlertDialog` (which would render `role="alertdialog"`), even though D-020's reference pattern
+set would suggest one.
+**Lives in:** UI §9
+**Why:** Behaviour is frozen for `refactor-06`, and the frozen suite asserts the delete
+confirmation via `getByRole("dialog")` (`TaskWriteFlows.test.tsx`). Switching to `AlertDialog`
+would change the accessible role and nest an alertdialog inside the task modals — a behaviour
+change outside this campaign. Promoting the delete confirmation to a true `AlertDialog` is a
+worthwhile accessibility enhancement, but it needs its own change with the matching test update,
+so it is deferred rather than smuggled into a behaviour-preserving refactor.

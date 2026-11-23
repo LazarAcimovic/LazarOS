@@ -1,5 +1,9 @@
 ### Refactor 01 — Split global.css by concern
 
+> **Superseded by refactor-06 (D-020).** Tailwind v4 replaced `global.css` entirely — R06.7
+> deleted the stylesheet — so splitting it by concern is moot. This campaign will not be
+> executed; it is kept for history.
+
 #### Overview
 
 `frontend/src/app/styles/global.css` is a single 1006-line file holding the design tokens,

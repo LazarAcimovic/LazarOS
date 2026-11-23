@@ -30,7 +30,7 @@ describe("LoginPage", () => {
     expect(apiLogin).not.toHaveBeenCalled();
   });
 
-  it("renders a server error in the auth__error strip", async () => {
+  it("renders a server error in the server-error strip", async () => {
     vi.mocked(apiLogin).mockRejectedValue({
       response: { data: { message: "Invalid email or password" } },
     });
@@ -41,8 +41,8 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Sign In" }));
 
     const strip = await screen.findByText("Invalid email or password");
-    expect(strip).toHaveClass("auth__error");
-    expect(container.querySelectorAll(".auth__error")).toHaveLength(1);
+    expect(strip).toHaveAttribute("data-auth-error");
+    expect(container.querySelectorAll("[data-auth-error]")).toHaveLength(1);
   });
 
   it("disables the submit button and changes its copy while submitting", async () => {

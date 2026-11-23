@@ -19,88 +19,81 @@
 
 ## 1. Project layout
 
-> verified at 82e2378
+> verified at: pending — stamped with the R06.8 commit sha (regenerated from the refactor-06 working tree).
 
 ```
 frontend/
 ├── .env.development              # VITE_API_URL=http://localhost:5000/api
+├── components.json               # shadcn config (aliases, Tailwind v4, no tailwind.config)
 ├── index.html
 ├── package.json
 ├── tsconfig.json                 # strict, "@/*" → "src/*"
-├── vite.config.ts                # @ alias only (no server proxy)
+├── vite.config.ts                # react plugin + React Compiler, @tailwindcss/vite, "@" alias, test block
 └── src/
     ├── app/
-    │   ├── App.tsx               # mounts RouterProvider + applies theme attribute
-    │   └── styles/
-    │       └── global.css        # all styling, 1006 lines (see refactor-01)
+    │   ├── App.tsx               # mounts providers + <RouterProvider/>
+    │   └── index.css             # Tailwind entry: theme + preflight + utilities imports, @theme tokens, .dark, base body
     ├── components/
-    │   ├── layout/
-    │   │   └── AppLayout.tsx     # NavBar + <Outlet/>
-    │   ├── navigation/
-    │   │   └── NavBar.tsx
-    │   └── shared/
-    │       ├── ConfirmDialog.tsx
-    │       ├── Loader.tsx
-    │       ├── Modal.tsx
-    │       └── Pagination.tsx
+    │   ├── ui/                   # shadcn primitives (button, input, dialog, badge, card, ...), generated, owned
+    │   ├── layout/               # AppLayout
+    │   ├── navigation/           # NavBar
+    │   └── shared/               # app composites: ConfirmDialog, ErrorState, Loader, Modal, Pagination
     ├── config/
-    │   └── constants.ts          # APP_ROUTES (used); API_ROUTES (unused, see task-05)
+    │   └── constants.ts          # APP_ROUTES, API_ROUTES
     ├── features/
-    │   ├── auth/
-    │   │   ├── api/index.ts
-    │   │   ├── models/index.ts
-    │   │   ├── pages/{LoginPage,RegisterPage}.tsx
-    │   │   └── validation/index.ts
-    │   └── tasks/
-    │       ├── api/index.ts
-    │       ├── components/{TaskCard,TaskEditDeleteModals,TaskForm}.tsx
-    │       ├── hooks/useTaskMutations.ts
-    │       ├── models/index.ts
-    │       ├── pages/{TodayPage,UpcomingPage,AllTasksPage,ArchivePage}.tsx
-    │       ├── utils/index.ts
-    │       └── validation/index.ts
-    ├── hooks/
-    │   ├── useAsync.ts           # fetcher + AbortController + reload
-    │   └── usePagination.ts
+    │   ├── auth/                 # api/, models/ (types + Zod), pages/ (LoginPage, RegisterPage), index.ts
+    │   ├── settings/             # pages/ (SettingsPage), index.ts
+    │   └── tasks/                # api/, components/, hooks/, models/, pages/, utils/, test-utils.ts, index.ts
+    ├── hooks/                    # cross-feature hooks: useAsync, usePagination
+    ├── lib/
+    │   └── utils.ts              # cn() (clsx + tailwind-merge), required by shadcn
     ├── main.tsx
-    ├── pages/
-    │   └── SettingsPage.tsx      # (not under features/)
-    ├── providers/
-    │   ├── AuthGuard.tsx
-    │   └── router.tsx
+    ├── providers/                # AuthGuard, router.tsx
     ├── shared/
     │   ├── api/apiClient.ts      # the shared axios instance
     │   └── utils.ts              # getApiError
-    ├── store/
-    │   ├── authStore.ts
-    │   └── themeStore.ts
+    ├── store/                    # authStore.ts, themeStore.ts
+    ├── test/
+    │   └── setup.ts              # jest-dom matchers + MSW server
     └── vite-env.d.ts
 ```
 
-Note: `SettingsPage` lives under `src/pages/`, not under a feature slice. Settings is a
-single-screen mix of auth + theme that does not warrant its own feature. If it grows, promote
-it then.
+Rules for the layout:
+
+- A feature never imports from another feature's internals — only from its `index.ts` barrel.
+  Cross-feature code that is not a barrel export belongs in `components/shared`, `hooks/` or `shared/`.
+- `components/ui/` holds only shadcn primitives; app-specific composites go in `components/shared/`.
+- `Settings` is a single screen mixing auth and theme; it gets a `features/settings/` slice
+  so no page lives outside a feature.
 
 ## 2. Patterns in use, and not in use
 
 **In use:**
 
-- **Feature-Sliced Design** for `auth` and `tasks` — each feature owns `api/`, `models/`,
-  `components/`, `pages/`, `validation/`, and optionally `hooks/` and `utils/`.
-- **Barrel files.** Every feature folder exposes a `index.ts` barrel.
+- **React 19.2 with the React Compiler** (`babel-plugin-react-compiler` via the Vite React
+  plugin). Do not hand-write `useMemo` / `useCallback` / `React.memo` for performance; write
+  plain components and let the compiler memoise. A hook that needs a stable identity for
+  correctness (an effect dependency) may still use `useCallback`.
+- **Feature-Sliced Design** for `auth`, `tasks` and `settings` — each feature owns `api/`,
+  `models/`, `components/`, `pages/`, and optionally `hooks/` and `utils/`.
+- **Barrel files.** Every feature folder exposes an `index.ts`; imports from outside the
+  feature go through it.
 - **Custom hooks for async state** — `useAsync` wraps every fetch in an `AbortController` and
-  gives back `{ data, isLoading, error, reload }`. `useTaskMutations` centralises the
-  edit/delete/complete flow a page needs.
-- **Form state via `useState`.** No form library.
-- **Zod on the client**, mirroring the backend schemas.
+  returns `{ data, isLoading, error, reload }`. Feature hooks (`useTaskMutations`) centralise
+  multi-step flows.
+- **Data router** (react-router-dom v7) — see §5.
+- **Zustand 5** for global client state — see §6.
+- **`react-hook-form` + `@hookform/resolvers/zod`** for forms; **Zod** schemas live in
+  `models/` and mirror the backend — see §7.
+- **Tailwind v4 + shadcn/radix primitives + lucide-react icons** — see §8.
 
 **Not in use — do not introduce:**
 
-- No **form library** (`react-hook-form`, `formik`, etc.).
 - No **query cache** (`react-query`, `swr`). `useAsync` is the agreed shape.
-- No **CSS framework or CSS-in-JS**. Vanilla CSS + BEM with CSS custom properties, one file
-  (`src/app/styles/global.css`). Splitting that file is tracked as `refactor-01`.
+- No **refresh-token / silent-retry machinery** — see §3 (D-007, D-020).
+- No **CSS-in-JS** and no hand-written stylesheet beyond the Tailwind entry file.
 - No **i18n layer.** English copy only.
+- No **SSR / framework router** (Next, Remix). The SPA stays a Vite build.
 
 ## 3. HTTP client
 
@@ -115,36 +108,50 @@ instance:
     route is not `/login` or `/register`, hard-redirect to `/login`.
   - Otherwise the rejection propagates.
 
+**There is no refresh token.** LazarOS issues a single 30-day JWT cookie (D-007). The client
+therefore has **no** token-refresh endpoint, **no** request queue, **no** silent retry of the
+failed request and **no** `_retry` flag: a 401 means the session is over and the user goes to
+`/login`. Reference patterns that describe refresh-and-retry do not apply here (D-020); adding
+one is a new product rule and needs its own Decisions entry first.
+
 **All feature `api/` modules call `apiClient` with paths relative to `baseURL`** — never with
-hardcoded absolute URLs.
+hardcoded absolute URLs. Each `api/` function takes an optional `AbortSignal` and returns the
+parsed `data`, not the axios response.
 
 ## 4. Data-fetching template
 
-Every page follows the same shape:
+Reads go through `useAsync`; the fetcher is a plain function of its arguments:
 
 ```ts
-const fetcher = useCallback((signal: AbortSignal) => apiGetX(args, signal), [args]);
+const fetcher = (signal: AbortSignal) => apiGetX(args, signal);
 const { data, isLoading, error, reload } = useAsync(fetcher, "Failed to load X");
 ```
 
-Then:
+Under the React Compiler the fetcher does not need `useCallback`; `useAsync` re-runs when the
+fetcher's captured inputs change. Then:
 
 - `if (isLoading) return <Loader />;`
-- `if (error) return <div className="page-error">{error}</div>;`
+- `if (error) return <ErrorState message={error} />;` (a `components/shared` composite built on
+  the shadcn `Alert`).
 - Render.
 
-Mutations call the `api/` function directly and then `reload()` (or go through
-`useTaskMutations`, which wraps the common cases). See [TodayPage.tsx:13-29](../frontend/src/features/tasks/pages/TodayPage.tsx)
-for a canonical example.
+Mutations call the `api/` function and then `reload()`, or go through the feature's mutation
+hook (`useTaskMutations`), which exposes `{ run, isPending, error }`-style handlers; the error
+is surfaced as the current screen already does (behaviour is frozen — no new toast layer). See
+[TodayPage.tsx](../frontend/src/features/tasks/pages/TodayPage.tsx) for a canonical example.
 
 ## 5. Routing and auth gate
 
-[`providers/router.tsx`](../frontend/src/providers/router.tsx) creates the browser router:
+[`providers/router.tsx`](../frontend/src/providers/router.tsx) builds a **data router** with
+`createBrowserRouter` (react-router-dom v7) and `App` renders `<RouterProvider router={router} />`:
 
 - Public routes: `/login`, `/register`.
-- A single `AuthGuard` route group wraps every authenticated page, nested under `AppLayout`.
+- A single `AuthGuard` layout route wraps every authenticated page, nested under `AppLayout`.
 - Routes come from `APP_ROUTES` in [config/constants.ts](../frontend/src/config/constants.ts);
   never hardcoded strings.
+- Pages are lazy-loaded with the route `lazy` property. Route `loader`s are **not** used for
+  data (fetching stays in `useAsync`, §4); the data router is adopted for its API, not to move
+  fetching.
 
 [`AuthGuard`](../frontend/src/providers/AuthGuard.tsx):
 
@@ -155,50 +162,64 @@ for a canonical example.
 
 ## 6. State
 
-Two Zustand stores, no persist middleware except `themeStore` writing to `localStorage` by
-hand.
+Zustand 5, two stores under `store/`, no persist middleware except `themeStore` writing to
+`localStorage` by hand (through `services/`).
 
+- **Selector convention.** Components subscribe with a selector per field —
+  `useAuthStore((s) => s.user)` — never `useAuthStore()` whole. Selectors returning a new
+  object or array must use `useShallow` (Zustand 5 otherwise loops on an unstable snapshot).
+  Stores are created with `create<State>()(...)`.
 - [`authStore`](../frontend/src/store/authStore.ts): `user`, `isLoading`, `setUser`,
   `setLoading`. Populated by `AuthGuard` on startup and by login/register pages after submit.
 - [`themeStore`](../frontend/src/store/themeStore.ts): `theme`, `toggleTheme`. Initial value is
   `localStorage.getItem("theme")` falling back to `prefers-color-scheme`. `toggleTheme` writes
-  both to `localStorage` and the `data-theme` attribute on `<html>`. The initial attribute is
-  applied via a `useEffect` in [App.tsx:9-11](../frontend/src/app/App.tsx).
+  both to `localStorage` and the `dark` class / `data-theme` attribute on `<html>`; the initial
+  value is applied by `ThemeProvider`.
 
-Component state is `useState` + `useMemo` for derived values. There is no global task cache.
+Component state is `useState`; derived values are plain expressions (the compiler memoises).
+There is no global task cache.
 
 ## 7. Forms and validation
 
-- Each form owns its fields as `useState` strings.
-- On submit the form calls `schema.safeParse(raw)`; errors are collected into a
-  `Record<field, message>` using the first error per path (see
-  [LoginPage.tsx:27-33](../frontend/src/features/auth/pages/LoginPage.tsx) and
-  [TaskForm.tsx:60-66](../frontend/src/features/tasks/components/TaskForm.tsx)).
+- Each form uses `useForm` from `react-hook-form` with `zodResolver(schema)`; the schema lives
+  in the owning feature's `models/` and is the same one the backend mirrors.
+- Fields render through the shadcn `Form` / `Input` / `Label` primitives; the first error per
+  field is shown inline under it.
 - Server errors from axios come back through `getApiError` in [shared/utils.ts](../frontend/src/shared/utils.ts),
-  which returns `err.response.data.message ?? fallback`.
+  which returns `err.response.data.message ?? fallback`; the form shows them in an `Alert` strip
+  (or `setError` for field-level cases).
+- Validation rules and messages are unchanged by the migration (behaviour is frozen).
 
 ## 8. Styling
 
-- One stylesheet: [`src/app/styles/global.css`](../frontend/src/app/styles/global.css).
-- BEM class naming (`task-card__body`, `btn btn--primary`, `form-group__input--error`).
-- Light and dark themes via CSS custom properties, switched by `[data-theme="dark"]` on
-  `<html>`; see UI §1 for the token list.
-- One breakpoint: `@media (max-width: 768px)` (mobile).
+- **Tailwind CSS v4** via `@tailwindcss/vite`. The only stylesheet is
+  `src/app/index.css`; there is no `tailwind.config.js` — tokens live in an `@theme` block (UI §1).
+- Style with utility classes. Variants of a component are declared with `cva`; class lists are
+  merged with `cn()` from `src/lib/utils.ts` (`clsx` + `tailwind-merge`).
+- **shadcn/ui** primitives are generated into `components/ui/` by the CLI and then owned by
+  the repo (edit freely, no upstream sync). Icons are `lucide-react`.
+- Dark mode is a `dark` class on `<html>` (custom variant `@custom-variant dark`), set by
+  `ThemeProvider`; with no stored choice it follows `prefers-color-scheme`.
+- Breakpoints are Tailwind's defaults; the mobile layout switches at `md` (768px), matching UI §10.
+- BEM and `global.css` are retired in R06.7 (D-020).
 
 ## 9. Testing
 
-**Framework: Vitest + @testing-library/react + jsdom**, added in `refactor-02` R02.2.
+**Framework: Vitest + @testing-library/react + jsdom + MSW** (Vitest stack added in `refactor-02` R02.2; MSW by `refactor-06`).
 
 Run with `cd frontend && npm test` (executes `vitest run`, non-interactive).
 
 ### Setup
 
 - `vite.config.ts` carries the `test` block: `environment: "jsdom"`, `globals: true`,
-  `setupFiles: ["./src/test-setup.ts"]`.
-- `src/test-setup.ts` imports `@testing-library/jest-dom` to extend the global `expect` with
-  DOM matchers (`toBeInTheDocument`, `toHaveClass`, etc.).
-- `tsconfig.json` includes `"types": ["vitest/globals"]` so `describe`, `it`, `expect`, `vi`
-  are typed without explicit imports in test files.
+  `setupFiles: ["./src/test/setup.ts"]`.
+- `src/test/setup.ts` imports `@testing-library/jest-dom` (DOM matchers), starts the **MSW**
+  node server (`server.listen({ onUnhandledRequest: "error" })`), resets handlers after each test
+  and closes it at the end.
+- `src/test/` also holds the MSW `server.ts` + default `handlers.ts`, a `renderWithProviders`
+  helper (data router via `createMemoryRouter`) and shared fixtures (`makeTask`,
+  `makeDashboardTask`, `localDate`).
+- `tsconfig.json` includes `"types": ["vitest/globals"]`.
 
 ### Where tests live
 
@@ -207,25 +228,21 @@ Page / integration tests follow the same co-location rule under their feature sl
 
 ### Mocking convention
 
-Mock at the `features/*/api/` layer, never at the `axios` level. This keeps each feature's
-API calls replaceable without touching the shared HTTP client. Page tests put `vi.mock("../api")`
-(automock) at the top, call `vi.resetAllMocks()` in `beforeEach`, and script each case with
-`vi.mocked(apiX).mockResolvedValue(...)` / `.mockRejectedValue({ response: { data: { message } } })`.
-Assertions check what the api function was called with (`apiUpdateTask("p1", { status: "completed" })`)
-and what the page then renders. Cross-feature imports are mocked by their alias path
-(`vi.mock("@/features/auth/api")` in the `AuthGuard` test).
+Mock the network, not the modules. Tests use **MSW** handlers (`server.use(http.get(...))`) so
+the real `apiClient`, the real `api/` functions and the real hooks run; assertions check what
+the page renders and which request was sent. Do not `vi.mock` a feature's `api/` module or
+`axios`. Router-dependent components render through `renderWithProviders` with a memory data
+router; the zustand `authStore` is reset with `useAuthStore.setState(...)` in `beforeEach`.
 
-Pages that call a router hook (`LoginPage`, `RegisterPage`) are wrapped in `<MemoryRouter>`;
-`AuthGuard` is rendered inside a `MemoryRouter` with a `/login` route and a guarded `/` route,
-and the zustand `authStore` is reset with `useAuthStore.setState(...)` in `beforeEach`. Pages
-with no router hook (`TodayPage`, `AllTasksPage`, `UpcomingPage`, `ArchivePage`) render bare.
-Shared task fixtures (`makeTask`, `makeDashboardTask`, `localDate`) live in
-`features/tasks/test-utils.ts`.
+> **Migration note.** The suites below were written before MSW: they still mock at the `api/`
+> layer (`vi.mock("../api")`) inside `MemoryRouter`, and import fixtures from
+> `features/tasks/test-utils.ts`. R06.4–R06.6 convert them as they rebuild each layer; the
+> behaviour they assert does not change.
 
 ### Suites in place
 
 - Component: `TaskCard.test.tsx`.
-- Auth pages: `LoginPage.test.tsx`, `RegisterPage.test.tsx` (inline Zod errors, `auth__error`
+- Auth pages: `LoginPage.test.tsx`, `RegisterPage.test.tsx` (inline Zod errors, `data-auth-error`
   strip, submitting state).
 - Task pages: `TodayPage.test.tsx`, `AllTasksPage.test.tsx` (filters, `PAGE_SIZE` 10),
   `UpcomingPage.test.tsx` (grouping, "Tomorrow", `PAGE_SIZE` 5), `ArchivePage.test.tsx`

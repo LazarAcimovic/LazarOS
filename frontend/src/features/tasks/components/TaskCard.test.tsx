@@ -27,7 +27,7 @@ function makeDashboardTask(days_overdue = 0): DashboardTask {
 describe("TaskCard", () => {
   it("renders the priority pill with the correct class", () => {
     render(<TaskCard task={makeTask({ priority: "high" })} />);
-    expect(screen.getByText("high")).toHaveClass("task-card__priority--high");
+    expect(screen.getByText("high")).toHaveAttribute("data-priority", "high");
   });
 
   it("shows the overdue badge when showDaysOverdue is true and days_overdue > 0", () => {

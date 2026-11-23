@@ -28,7 +28,7 @@ function dashboard() {
 }
 
 function cardOf(title: string): HTMLElement {
-  return screen.getByText(title).closest(".task-card") as HTMLElement;
+  return screen.getByText(title).closest("[data-task-card]") as HTMLElement;
 }
 
 describe("task write flows at the api boundary", () => {

@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { APP_ROUTES } from "@/config/constants";
+import { cn } from "@/lib/utils";
 
 const links = [
   { to: APP_ROUTES.TODAY, label: "Today", end: true },
@@ -11,16 +12,23 @@ const links = [
 
 export default function NavBar() {
   return (
-    <nav className="navbar">
-      <span className="navbar__brand">LazarOS</span>
-      <ul className="navbar__links">
+    <nav className="sticky top-0 flex h-screen w-55 shrink-0 flex-col border-r border-border bg-card py-6">
+      <span className="px-5 pb-6 text-lg font-bold tracking-tight text-primary">
+        LazarOS
+      </span>
+      <ul className="flex flex-col gap-0.5 px-2.5">
         {links.map(({ to, label, end }) => (
-          <li key={to} className="navbar__item">
+          <li key={to} className="block">
             <NavLink
               to={to}
               end={end}
               className={({ isActive }) =>
-                `navbar__link${isActive ? " navbar__link--active" : ""}`
+                cn(
+                  "block rounded-sm px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )
               }
             >
               {label}

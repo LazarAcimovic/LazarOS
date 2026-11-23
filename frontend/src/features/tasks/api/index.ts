@@ -1,27 +1,11 @@
 import apiClient from "@/shared/api/apiClient";
 import {
   Task,
-  DashboardTask,
   DashboardData,
   CreateTaskDTO,
   UpdateTaskDTO,
 } from "../models";
-
-function normalizeDate(s: string): string {
-  return s ? s.substring(0, 10) : s;
-}
-
-function normalizeTask<T extends Task>(t: T): T {
-  return { ...t, due_date: normalizeDate(t.due_date) };
-}
-
-function normalizeDashboard(d: DashboardData): DashboardData {
-  return {
-    overdue: d.overdue.map(normalizeTask<DashboardTask>),
-    today: d.today.map(normalizeTask<DashboardTask>),
-    completed_today: d.completed_today.map(normalizeTask<DashboardTask>),
-  };
-}
+import { mapTask, mapDashboard } from "../utils";
 
 export async function apiGetDashboard(
   today: string,
@@ -31,12 +15,12 @@ export async function apiGetDashboard(
     params: { today },
     signal,
   });
-  return normalizeDashboard(res.data);
+  return mapDashboard(res.data);
 }
 
 export async function apiGetAllTasks(signal?: AbortSignal): Promise<Task[]> {
   const res = await apiClient.get<Task[]>("/tasks", { signal });
-  return res.data.map(normalizeTask);
+  return res.data.map(mapTask);
 }
 
 export async function apiGetUpcoming(
@@ -47,12 +31,12 @@ export async function apiGetUpcoming(
     params: { today },
     signal,
   });
-  return res.data.map(normalizeTask);
+  return res.data.map(mapTask);
 }
 
 export async function apiGetArchive(signal?: AbortSignal): Promise<Task[]> {
   const res = await apiClient.get<Task[]>("/tasks/archive", { signal });
-  return res.data.map(normalizeTask);
+  return res.data.map(mapTask);
 }
 
 export async function apiCreateTask(

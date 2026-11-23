@@ -48,13 +48,13 @@ describe("UpcomingPage", () => {
     render(<UpcomingPage />);
     await screen.findByText("Task 1");
 
-    expect(document.querySelectorAll(".task-card")).toHaveLength(5);
+    expect(document.querySelectorAll("[data-task-card]")).toHaveLength(5);
     expect(screen.queryByText("Task 6")).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
 
     await user.click(screen.getByRole("button", { name: /next/i }));
-    expect(document.querySelectorAll(".task-card")).toHaveLength(2);
+    expect(document.querySelectorAll("[data-task-card]")).toHaveLength(2);
     expect(screen.getByText("Task 6")).toBeInTheDocument();
     expect(screen.getByText("Task 7")).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();

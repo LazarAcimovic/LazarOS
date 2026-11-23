@@ -1,7 +1,18 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Task } from "../models";
-import { createTaskSchema, editTaskSchema } from "../validation";
+import { createTaskSchema, editTaskSchema, type EditTaskValues } from "../models";
 import { getApiError } from "@/shared/utils";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+// Native <select> kept (suites drive it with selectOptions); styled to match the shadcn Input.
+const SELECT_CLASS =
+  "h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30";
 
 interface Props {
   onSubmit: (data: {
@@ -22,58 +33,43 @@ export default function TaskForm({
   initialValues,
   mode,
 }: Props) {
-  const [title, setTitle] = useState(initialValues?.title ?? "");
-  const [description, setDescription] = useState<string>(
-    initialValues?.description ?? ""
-  );
-  const [due_date, setDueDate] = useState(initialValues?.due_date ?? "");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">(
-    initialValues?.priority ?? "medium"
-  );
-  const [status, setStatus] = useState<"pending" | "completed">(
-    initialValues?.status ?? "pending"
-  );
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const toValues = (t?: Task): EditTaskValues => ({
+    title: t?.title ?? "",
+    description: t?.description ?? "",
+    due_date: t?.due_date ?? "",
+    priority: t?.priority ?? "medium",
+    status: t?.status ?? "pending",
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EditTaskValues>({
+    resolver: zodResolver(
+      mode === "create" ? createTaskSchema : editTaskSchema
+    ) as unknown as Resolver<EditTaskValues>,
+    defaultValues: toValues(initialValues),
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState("");
 
   useEffect(() => {
-    if (initialValues) {
-      setTitle(initialValues.title);
-      setDescription(initialValues.description ?? "");
-      setDueDate(initialValues.due_date);
-      setPriority(initialValues.priority);
-      setStatus(initialValues.status);
-    }
-  }, [initialValues]);
+    if (initialValues) reset(toValues(initialValues));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, reset]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setErrors({});
+  const onValid = async (values: EditTaskValues) => {
     setServerError("");
-
-    const raw = { title, description, due_date, priority, status };
-    const schema = mode === "create" ? createTaskSchema : editTaskSchema;
-    const result = schema.safeParse(raw);
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        const key = String(err.path[0]);
-        fieldErrors[key] = err.message;
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
     setIsLoading(true);
     try {
       await onSubmit({
-        title,
-        description: description || undefined,
-        due_date,
-        priority,
-        ...(mode === "edit" ? { status } : {}),
+        title: values.title,
+        description: values.description || undefined,
+        due_date: values.due_date,
+        priority: values.priority,
+        ...(mode === "edit" ? { status: values.status } : {}),
       });
     } catch (err: unknown) {
       setServerError(getApiError(err, "Something went wrong"));
@@ -83,68 +79,64 @@ export default function TaskForm({
   };
 
   return (
-    <form className="task-form" onSubmit={handleSubmit} noValidate>
-      {serverError && <div className="task-form__error">{serverError}</div>}
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        setServerError("");
+        return handleSubmit(onValid)(e);
+      }}
+      noValidate
+    >
+      {serverError && <Alert variant="destructive">{serverError}</Alert>}
 
-      <div className="form-group">
-        <label className="form-group__label" htmlFor="tf-title">
-          Title <span className="form-group__required">*</span>
-        </label>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="tf-title">
+          Title <span className="text-destructive">*</span>
+        </Label>
+        <Input
           id="tf-title"
-          className={`form-group__input${errors.title ? " form-group__input--error" : ""}`}
           type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          {...register("title")}
           placeholder="Task title"
+          aria-invalid={errors.title ? true : undefined}
         />
         {errors.title && (
-          <span className="form-group__error">{errors.title}</span>
+          <span className="text-xs text-destructive">{errors.title.message}</span>
         )}
       </div>
 
-      <div className="form-group">
-        <label className="form-group__label" htmlFor="tf-desc">
-          Description
-        </label>
-        <textarea
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="tf-desc">Description</Label>
+        <Textarea
           id="tf-desc"
-          className="form-group__textarea"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          {...register("description")}
           placeholder="Optional description"
           rows={3}
         />
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label className="form-group__label" htmlFor="tf-date">
-            Due Date <span className="form-group__required">*</span>
-          </label>
-          <input
+      <div className="flex flex-wrap gap-3">
+        <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+          <Label htmlFor="tf-date">
+            Due Date <span className="text-destructive">*</span>
+          </Label>
+          <Input
             id="tf-date"
-            className={`form-group__input${errors.due_date ? " form-group__input--error" : ""}`}
             type="date"
-            value={due_date}
-            onChange={(e) => setDueDate(e.target.value)}
+            {...register("due_date")}
+            aria-invalid={errors.due_date ? true : undefined}
           />
           {errors.due_date && (
-            <span className="form-group__error">{errors.due_date}</span>
+            <span className="text-xs text-destructive">{errors.due_date.message}</span>
           )}
         </div>
 
-        <div className="form-group">
-          <label className="form-group__label" htmlFor="tf-priority">
-            Priority
-          </label>
+        <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+          <Label htmlFor="tf-priority">Priority</Label>
           <select
             id="tf-priority"
-            className="form-group__select"
-            value={priority}
-            onChange={(e) =>
-              setPriority(e.target.value as "low" | "medium" | "high")
-            }
+            className={SELECT_CLASS}
+            {...register("priority")}
           >
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -153,17 +145,12 @@ export default function TaskForm({
         </div>
 
         {mode === "edit" && (
-          <div className="form-group">
-            <label className="form-group__label" htmlFor="tf-status">
-              Status
-            </label>
+          <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+            <Label htmlFor="tf-status">Status</Label>
             <select
               id="tf-status"
-              className="form-group__select"
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as "pending" | "completed")
-              }
+              className={SELECT_CLASS}
+              {...register("status")}
             >
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
@@ -172,20 +159,16 @@ export default function TaskForm({
         )}
       </div>
 
-      <div className="task-form__actions">
-        <button
+      <div className="flex justify-end gap-2">
+        <Button
           type="button"
-          className="btn btn--ghost"
+          variant="ghost"
           onClick={onCancel}
           disabled={isLoading}
         >
           Cancel
-        </button>
-        <button
-          type="submit"
-          className="btn btn--primary"
-          disabled={isLoading}
-        >
+        </Button>
+        <Button type="submit" disabled={isLoading}>
           {isLoading
             ? mode === "create"
               ? "Creating..."
@@ -193,7 +176,7 @@ export default function TaskForm({
             : mode === "create"
             ? "Create Task"
             : "Save Changes"}
-        </button>
+        </Button>
       </div>
     </form>
   );

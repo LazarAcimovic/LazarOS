@@ -48,21 +48,37 @@ From [backend/package.json](../backend/package.json):
 
 From [frontend/package.json](../frontend/package.json):
 
+The frontend was transformed to this stack by `refactor-06` (D-020).
+
 | Package | Version | Role |
 |---|---|---|
-| `react`, `react-dom` | `^18.3.1` | UI |
-| `react-router-dom` | `^6.24.1` | Client-side routing |
+| `react`, `react-dom` | `19.2` | UI, with the React Compiler on |
+| `react-router-dom` | `^7.18.6` | Data router (`createBrowserRouter`) |
 | `axios` | `^1.7.2` | HTTP client with `withCredentials: true` |
-| `zustand` | `^4.5.4` | Global state (auth, theme) |
-| `zod` | `^3.23.8` | Form validation |
-| `vite` (dev) | `^6.4.6` | Dev server and build tool |
-| `@vitejs/plugin-react` (dev) | `^4.7.0` | Vite React plugin |
+| `zustand` | `^5.1.0` | Global state (auth, theme) |
+| `zod` | `^3.23.8` | Schemas, shared by forms and API types |
+| `react-hook-form` | `^7.92.0` | Form state and submission |
+| `@hookform/resolvers` | `^7.0.8` | Wires Zod schemas into react-hook-form |
+| `tailwindcss`, `@tailwindcss/vite` | `^4.3.5` | Styling; the only stylesheet is `src/app/index.css` |
+| `radix-ui` | `^1.8.1` | Accessible primitives under shadcn/ui |
+| `class-variance-authority` | `^0.7.1` | Component variants (`cva`) |
+| `clsx`, `tailwind-merge` | `^2.1.1` / `^3.7.1` | The `cn()` helper ([lib/utils.ts](../frontend/src/lib/utils.ts)) |
+| `lucide-react` | `^1.78.0` | Icons |
+| `geist` | `^1.9.2` | Font |
+| `vite` (dev) | `^8.3.8` | Dev server and build tool |
+| `@vitejs/plugin-react` (dev) | `^6.3.0` | Vite React plugin |
+| `babel-plugin-react-compiler` (dev) | `^1.0.0` | React Compiler, via the Vite React plugin |
+| `@rolldown/plugin-babel`, `@babel/core` (dev) | `^0.3.1` / `^8.1.3` | Babel step that runs the compiler plugin |
 | `typescript` (dev) | `^5.5.3` | Type checker; strict mode on, see [tsconfig.json](../frontend/tsconfig.json) |
 | `vitest` (dev) | `^5.1.1` | Test runner (matches backend version) |
-| `@testing-library/react` (dev) | `^16.3.3` | Component rendering for tests |
-| `@testing-library/user-event` (dev) | `^14.6.13` | User interaction simulation |
+| `@testing-library/react`, `@testing-library/user-event` (dev) | `^16.3.3` / `^14.6.13` | Component render + interaction in tests |
 | `@testing-library/jest-dom` (dev) | `^8.0.0` | DOM matchers (`toBeInTheDocument`, etc.) |
-| `jsdom` (dev) | `^29.1.1` | DOM environment for vitest |
+| `msw` (dev) | `^3.0.7` | Network mocking for Vitest |
+| `jsdom` (dev) | `^29.1.1` | DOM environment for Vitest |
+| `@playwright/test` (dev) | `^1.49.0` | End-to-end test runner (Tech-Frontend §9) |
+| `pg` (dev) | `^8.16.3` | Prepares the `LazarOS_E2E` database in `run-e2e.mjs` |
+
+`@types/react`, `@types/react-dom` and `@types/babel__core` supply the type definitions.
 
 ### Deliberately not installed
 

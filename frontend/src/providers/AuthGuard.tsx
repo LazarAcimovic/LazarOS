@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
-import { apiGetMe } from "@/features/auth/api";
+import { apiGetMe } from "@/features/auth";
 import { APP_ROUTES } from "@/config/constants";
 import Loader from "@/components/shared/Loader";
 

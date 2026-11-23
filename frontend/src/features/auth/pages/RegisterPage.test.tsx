@@ -55,7 +55,7 @@ describe("RegisterPage", () => {
     expect(apiRegister).not.toHaveBeenCalled();
   });
 
-  it("renders a server error in the auth__error strip", async () => {
+  it("renders a server error in the server-error strip", async () => {
     vi.mocked(apiRegister).mockRejectedValue({
       response: { data: { message: "Email already registered" } },
     });
@@ -65,7 +65,7 @@ describe("RegisterPage", () => {
     await user.click(screen.getByRole("button", { name: "Create Account" }));
 
     const strip = await screen.findByText("Email already registered");
-    expect(strip).toHaveClass("auth__error");
+    expect(strip).toHaveAttribute("data-auth-error");
   });
 
   it("disables the submit button and changes its copy while submitting", async () => {

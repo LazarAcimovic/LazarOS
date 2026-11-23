@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import AuthGuard from "./AuthGuard";
 import { useAuthStore } from "@/store/authStore";
-import { apiGetMe } from "@/features/auth/api";
+import { apiGetMe } from "@/features/auth";
 
 vi.mock("@/features/auth/api");
 

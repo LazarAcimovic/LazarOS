@@ -66,16 +66,16 @@ describe("TodayPage", () => {
     render(<TodayPage />);
 
     const rent = (await screen.findByText("Pay rent")).closest(
-      ".task-card"
+      "[data-task-card]"
     ) as HTMLElement;
     expect(within(rent).getByText("3 days overdue")).toBeInTheDocument();
 
-    const bank = screen.getByText("Call bank").closest(".task-card") as HTMLElement;
+    const bank = screen.getByText("Call bank").closest("[data-task-card]") as HTMLElement;
     expect(within(bank).getByText("1 day overdue")).toBeInTheDocument();
 
     const today = screen
       .getByText("Write report")
-      .closest(".task-card") as HTMLElement;
+      .closest("[data-task-card]") as HTMLElement;
     expect(within(today).queryByText(/overdue/i)).not.toBeInTheDocument();
   });
 

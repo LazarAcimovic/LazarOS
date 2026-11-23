@@ -9,5 +9,5 @@ Progress counts subtasks; a subtask counts as done only when every one of its bo
 
 | Campaign | Title | Progress | What's left | Depends on | Blocks | File |
 |---|---|---|---|---|---|---|
-| refactor-01 | Split global.css by concern | 0/1 | 1006-line monolith + no CSS module layout | — | — | [refactor-01-split-global-css.md](refactor-01-split-global-css.md) |
-| refactor-06 | Transform frontend to the React 19 feature-sliced stack | 0/8 | stack upgrade, restructure, rebuild on shadcn | refactor-02, refactor-03 | — | [refactor-06-frontend-transformation.md](refactor-06-frontend-transformation.md) |
+| refactor-01 | Split global.css by concern | 0/1 | **Superseded by refactor-06 (D-020)** — global.css deleted, split moot | — | — | [refactor-01-split-global-css.md](refactor-01-split-global-css.md) |
+| refactor-06 | Transform frontend to the React 19 feature-sliced stack | 6/8 | refresh layout block + baseline (R06.8); final e2e closes R06.6 | refactor-02, refactor-03 | — | [refactor-06-frontend-transformation.md](refactor-06-frontend-transformation.md) |

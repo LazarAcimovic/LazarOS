@@ -205,7 +205,7 @@ From [frontend/src/config/constants.ts:1-9](../frontend/src/config/constants.ts)
 | bcrypt cost | 10 rounds | [authController.js:30](../backend/controllers/authController.js) |
 | Upcoming page size | 5 | [UpcomingPage.tsx:13](../frontend/src/features/tasks/pages/UpcomingPage.tsx) |
 | All Tasks page size | 10 | [AllTasksPage.tsx:13](../frontend/src/features/tasks/pages/AllTasksPage.tsx) |
-| Mobile breakpoint | `max-width: 768px` | [frontend/src/app/styles/global.css:976](../frontend/src/app/styles/global.css) |
+| Mobile breakpoint | 768px (Tailwind `md`) | [AppLayout.tsx](../frontend/src/components/layout/AppLayout.tsx) |
 | Locale | `en-US` for date formatting | [frontend/src/features/tasks/utils/index.ts:12, 33](../frontend/src/features/tasks/utils/index.ts) |
 
 **Timezone:** the business day is **the user's local date**. The server never computes "today"

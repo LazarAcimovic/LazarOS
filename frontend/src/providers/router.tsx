@@ -2,13 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 import { APP_ROUTES } from "@/config/constants";
 import AuthGuard from "./AuthGuard";
 import AppLayout from "@/components/layout/AppLayout";
-import LoginPage from "@/features/auth/pages/LoginPage";
-import RegisterPage from "@/features/auth/pages/RegisterPage";
-import TodayPage from "@/features/tasks/pages/TodayPage";
-import UpcomingPage from "@/features/tasks/pages/UpcomingPage";
-import AllTasksPage from "@/features/tasks/pages/AllTasksPage";
-import ArchivePage from "@/features/tasks/pages/ArchivePage";
-import SettingsPage from "@/pages/SettingsPage";
+import { LoginPage, RegisterPage } from "@/features/auth";
+import { TodayPage, UpcomingPage, AllTasksPage, ArchivePage } from "@/features/tasks";
+import { SettingsPage } from "@/features/settings";
 
 export const router = createBrowserRouter([
   {

@@ -6,6 +6,7 @@ import TaskCard from "../components/TaskCard";
 import Pagination from "@/components/shared/Pagination";
 import Loader from "@/components/shared/Loader";
 import TaskEditDeleteModals from "../components/TaskEditDeleteModals";
+import ErrorState from "@/components/shared/ErrorState";
 import { useAsync } from "@/hooks/useAsync";
 import { useTaskMutations } from "../hooks/useTaskMutations";
 import { usePagination } from "@/hooks/usePagination";
@@ -40,24 +41,26 @@ export default function UpcomingPage() {
   const sortedDates = Object.keys(groups).sort();
 
   if (isLoading) return <Loader />;
-  if (error) return <div className="page-error">{error}</div>;
+  if (error) return <ErrorState message={error} />;
 
   return (
-    <div className="page">
-      <div className="page__header">
-        <h1 className="page__title">Upcoming</h1>
+    <div className="mx-auto max-w-215 px-8 py-9 max-md:px-4 max-md:py-5">
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <h1 className="text-2xl font-bold">Upcoming</h1>
       </div>
 
       {(tasks?.length ?? 0) === 0 ? (
-        <div className="empty-state">
+        <div className="px-6 py-12 text-center text-[15px] text-muted-foreground">
           <p>No upcoming tasks. Add one from the Today page!</p>
         </div>
       ) : (
         <>
           {sortedDates.map((date) => (
-            <section key={date} className="task-section">
-              <h2 className="task-section__heading">{formatGroupDate(date)}</h2>
-              <div className="task-list">
+            <section key={date} className="mb-8">
+              <h2 className="mb-2.5 border-b border-border pb-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {formatGroupDate(date)}
+              </h2>
+              <div className="flex flex-col gap-2">
                 {groups[date].map((t) => (
                   <TaskCard
                     key={t.id}

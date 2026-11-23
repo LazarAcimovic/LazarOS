@@ -22,14 +22,21 @@
 
 ## 1. Visual foundation
 
-- **Styling framework:** none. Vanilla CSS, BEM, one file — [`src/app/styles/global.css`](../frontend/src/app/styles/global.css).
-- **Colour, radius, shadow, font:** defined as CSS custom properties on `:root` and
-  redefined under `@media (prefers-color-scheme: dark)` and `[data-theme="dark"]`.
-- **Theme switching:** the `data-theme` attribute on `<html>` (set in [App.tsx:9-11](../frontend/src/app/App.tsx))
-  wins over the media query (see the `:root:not([data-theme="light"])` selector in the stylesheet).
-- **Font stack:** `--font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`.
+- **Styling framework:** Tailwind CSS v4 (D-020). Tokens are declared once in the `@theme` block of
+  `src/app/index.css`; components consume them as utilities (`bg-surface`, `text-muted-foreground`).
+  There is no hand-written component stylesheet and no BEM.
+- **Colour, radius, shadow, font:** defined as CSS variables on `:root` and redefined under
+  `.dark`; `@theme inline` maps each variable to a Tailwind token so utilities follow the theme.
+- **Theme switching:** a `dark` class on `<html>` (Tailwind `@custom-variant dark`), set by
+  `ThemeProvider` from `themeStore`; with no stored choice it follows `prefers-color-scheme`.
+- **Font stack:** `--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`.
 
-### Token reference (from `global.css`, light theme)
+### Token reference (the `@theme` block, light theme)
+
+Values are carried over unchanged from the former stylesheet so the palette does not shift. The
+shadcn semantic names (`background`, `foreground`, `card`, `primary`, `destructive`, `muted`,
+`border`, `ring`) are mapped onto these tokens: `background` = `--color-bg`, `card` = `--color-surface`,
+`primary` = `--color-primary`, `destructive` = `--color-danger`, `muted-foreground` = `--color-text-muted`.
 
 | Token | Value | Use |
 |---|---|---|
@@ -50,9 +57,9 @@
 | `--color-priority-{high,medium,low}` | `#dc2626 / #d97706 / #059669` | Priority pill |
 | `--radius-{sm,md,lg}` | `6px / 10px / 16px` | — |
 | `--shadow-{sm,md,lg}` | three elevations | — |
-| `--nav-width` | `220px` | Sidebar width |
+| `--nav-width` | `220px` | Sidebar width (`w-55`) |
 
-Dark variants are in the stylesheet starting at line 55.
+Dark variants are declared under `.dark` in the same file, one value per token above.
 
 ## 2. Layout and navigation
 
@@ -66,8 +73,8 @@ Authenticated screens are wrapped in [`AppLayout`](../frontend/src/components/la
 ```
 
 Nav links come from [`NavBar.tsx:4-10`](../frontend/src/components/navigation/NavBar.tsx):
-`Today`, `Upcoming`, `All Tasks`, `Archive`, `Settings`. The active link gets the
-`navbar__link--active` modifier.
+`Today`, `Upcoming`, `All Tasks`, `Archive`, `Settings`. The active link is styled through
+`NavLink`'s active state (Tailwind utilities merged with `cn()`).
 
 On mobile (§10) the nav collapses — see the `@media (max-width: 768px)` block in the
 stylesheet.
@@ -79,7 +86,7 @@ Visual rules — [`LoginPage.tsx`](../frontend/src/features/auth/pages/LoginPage
 
 - Centred card on `--color-bg`.
 - Title: `LazarOS`. Subtitle: `Sign in to your workspace` / `Create your account`.
-- Server errors render in a top `auth__error` strip. Field errors render as inline
+- Server errors render in a top error strip (marked `data-auth-error`). Field errors render as inline
   `form-group__error` under each field.
 - **Register has a password visibility toggle** (eye icon) on both password and confirmation
   fields ([RegisterPage.tsx:9-25, 143-163](../frontend/src/features/auth/pages/RegisterPage.tsx)).
@@ -149,20 +156,30 @@ The modal titled "New Task" renders the shared `TaskForm` in `create` mode.
 
 ## 9. Shared primitives
 
-- **`Modal`** ([`Modal.tsx`](../frontend/src/components/shared/Modal.tsx)) — overlay +
-  centered card, title + close button, Escape closes, click-outside closes.
+**shadcn/radix primitives** (generated into `components/ui/`, styled by the §1 tokens; Tech-Frontend §8):
+`button` (variants: default, destructive, outline, ghost), `input`, `label`, `textarea`, `select`,
+`checkbox`, `form`, `dialog`, `alert-dialog`, `badge`, `card`, `alert`,
+`skeleton`, `separator`. Keyboard, focus-trap and ARIA behaviour come from radix (UI §12). Icons are
+`lucide-react`. Add a primitive only when a screen needs it.
+
+**App composites** (`components/shared/`, built from the primitives):
+
+- **`Modal`** — a `dialog` wrapper: title + close button, Escape closes, click-outside closes.
 - **`Loader`** — a plain spinner, used while `useAsync` is loading.
-- **`ConfirmDialog`** — used for deletion; accepts `message`, `onConfirm`, `onCancel`,
-  `isLoading`.
+- **`ConfirmDialog`** — a `dialog` wrapper used for deletion (`role="dialog"`, not `alert-dialog`,
+  per D-021); accepts `message`, `onConfirm`, `onCancel`, `isLoading`.
 - **`Pagination`** — Prev / `page / total` / Next, returns `null` when `totalPages <= 1`.
-- **`TaskCard`** — one card component drives Today, Upcoming, All Tasks, Archive. Shows
-  priority pill (coloured), date, optional overdue badge, and context-dependent action
-  buttons (Complete toggle, Edit, Delete, Restore).
+- **`TaskCard`** (`features/tasks/components`) — one `card`-based component drives Today, Upcoming,
+  All Tasks, Archive. Shows priority `badge` (coloured), date, optional overdue badge, and
+  context-dependent action buttons (Complete toggle, Edit, Delete, Restore).
+
+Copy, states and behaviour of these components are unchanged by the migration; only the look
+comes from the shadcn defaults themed with the §1 tokens.
 
 ## 10. Responsiveness
 
-One breakpoint: `@media (max-width: 768px)` ([global.css:976](../frontend/src/app/styles/global.css)).
-Below it:
+One breakpoint at 768px — Tailwind's `md` — applied with `md:` / `max-md:` utilities in
+[`AppLayout`](../frontend/src/components/layout/AppLayout.tsx). Below it:
 
 - The sidebar nav collapses and the content fills the width.
 - Summary cards and filter rows wrap.

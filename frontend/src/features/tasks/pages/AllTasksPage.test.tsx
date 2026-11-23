@@ -14,7 +14,7 @@ const FILTER_TASKS = [
 ];
 
 function titles() {
-  return Array.from(document.querySelectorAll(".task-card__title")).map(
+  return Array.from(document.querySelectorAll("[data-task-title]")).map(
     (el) => el.textContent
   );
 }

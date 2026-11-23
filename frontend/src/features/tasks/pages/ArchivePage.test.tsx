@@ -47,7 +47,7 @@ describe("ArchivePage", () => {
     render(<ArchivePage />);
     await screen.findByText("Old task");
 
-    const card = screen.getByText("Old task").closest(".task-card") as HTMLElement;
+    const card = screen.getByText("Old task").closest("[data-task-card]") as HTMLElement;
     await user.click(card.querySelector("button") as HTMLButtonElement);
 
     expect(apiRestoreTask).toHaveBeenCalledWith("1");
