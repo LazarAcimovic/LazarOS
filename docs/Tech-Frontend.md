@@ -19,7 +19,7 @@
 
 ## 1. Project layout
 
-> verified at 991378c
+> verified at fd947d8
 
 ```
 frontend/

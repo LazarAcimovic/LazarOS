@@ -15,7 +15,7 @@
 
 ## 1. Stack snapshot
 
-> verified at 991378c
+> verified at fd947d8
 
 Two deployable tiers in one repository:
 
