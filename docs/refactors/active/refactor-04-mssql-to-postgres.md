@@ -85,11 +85,11 @@ Tech-Backend §1 (the `config/db.js` description), backend `.env.example`.
 Verify: the app boots against a local Postgres and establishes the pool; `GET /api/auth/me`
 reaches the database layer.
 
-- [ ] `pg` added and `mssql`/`msnodesqlv8` removed from `backend/package.json`.
-- [ ] `config/db.js` exports a single `pg.Pool` built from `DATABASE_URL`, reused process-wide.
-- [ ] `DATABASE_URL` (and the `TEST_*` equivalent from refactor-03) in env + `.env.example`;
+- [x] `pg` added and `mssql`/`msnodesqlv8` removed from `backend/package.json`.
+- [x] `config/db.js` exports a single `pg.Pool` built from `DATABASE_URL`, reused process-wide.
+- [x] `DATABASE_URL` (and the `TEST_*` equivalent from refactor-03) in env + `.env.example`;
       no connection string hardcoded anywhere.
-- [ ] `server.js`, CORS, cookies and routing are untouched.
+- [x] `server.js`, CORS, cookies and routing are untouched.
 - Commit: `refactor(backend): env-driven pg pool in place of the mssql driver`
 
 ---

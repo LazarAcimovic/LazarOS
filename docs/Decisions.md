@@ -110,13 +110,14 @@ out of scope (PRD §10). Confirmed by inspection on 2026-11-05.
 
 ### D-010 — DB connection is hardcoded (Windows auth, specific machine)
 
-**Decided:** 2026-11-05 · **Status:** OPEN
-**Answer:** The connection string in [backend/config/db.js:3-10](../backend/config/db.js) is
-hardcoded to server `DESKTOP-8R6Q0B4` with Windows authentication. This is a known blocker to
-running on another machine; tracked as `task-03`. Marked **OPEN** because the long-term
-intent (env vars, SQL auth, or Docker) is not recorded.
+**Decided:** 2026-11-05 · **Status:** Resolved by D-016 (2026-11-23)
+**Answer:** The connection string was hardcoded to server `DESKTOP-8R6Q0B4` with Windows
+authentication — a blocker to running the backend on any other machine. `refactor-04` (D-016)
+resolved this: the `pg` pool is now built from the env-driven `DATABASE_URL`
+([config/db.js](../backend/config/db.js)) and nothing is hardcoded. The separate env-config task
+that tracked this is subsumed by that change.
 **Lives in:** Tech-Backend §7
-**Why:** Not recorded.
+**Why:** The long-term intent — env-driven configuration — is now recorded in D-016.
 
 ### D-011 — Hard delete is never performed
 

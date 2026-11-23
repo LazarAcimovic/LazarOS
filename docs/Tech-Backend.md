@@ -24,7 +24,7 @@
 ```
 backend/
 ├── config/
-│   └── db.js                     # mssql pool singleton
+│   └── db.js                     # pg pool singleton (from DATABASE_URL)
 ├── controllers/
 │   ├── authController.js         # register / login / logout / me
 │   └── taskController.js         # dashboard / upcoming / all / archive / CRUD / restore
@@ -124,10 +124,11 @@ Controllers set `res.status(4xx)` then `throw new Error(...)`; `asyncHandler` fo
 
 - `JWT_SECRET` must be present; there is no fallback. Starting the app without it will throw
   when the first login happens.
-- DB connection: Windows auth, server name hardcoded in [config/db.js:4-10](../backend/config/db.js).
-  Tracked in `task-03`.
+- DB connection: the `pg` pool is built from the env-driven `DATABASE_URL`
+  ([config/db.js](../backend/config/db.js)); nothing is hardcoded (D-016). A template of every
+  backend variable lives in [backend/.env.example](../backend/.env.example).
 - Nothing is written to logs beyond `console.log` for startup and `console.error` on DB
-  connect failure ([server.js:37-44](../backend/server.js)).
+  connect failure ([server.js](../backend/server.js)).
 
 ## 8. Time handling
 

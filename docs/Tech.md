@@ -121,10 +121,12 @@ Loaded by `dotenv/config` at the top of [server.js:1](../backend/server.js).
 | Variable | Purpose | Default |
 |---|---|---|
 | `PORT` | HTTP port | `5000` |
+| `DATABASE_URL` | PostgreSQL connection for the `pg` pool (`postgres://user:pass@host:port/db`) | — (the pool rejects on missing) |
 | `JWT_SECRET` | Required to sign and verify JWTs | — (crash on missing is implicit; `jsonwebtoken` throws) |
 | `NODE_ENV` | Toggles cookie `secure` flag and stack traces in error responses | — |
 
-There is no `.env.example` yet; see `task-03`.
+A template of every backend variable lives in [backend/.env.example](../backend/.env.example);
+copy it to `backend/.env` (gitignored) and fill in the values.
 
 ### Frontend env
 
