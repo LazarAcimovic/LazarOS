@@ -82,15 +82,13 @@ From [frontend/package.json](../frontend/package.json):
   read from the environment — nothing is hardcoded (the engine switch and env move are D-016).
 - **Schema file:** [backend/db/schema.sql](../backend/db/schema.sql). Drop-and-recreate; no
   migration framework. Documented in `DB.md` §5.
-- **Test database:** a throwaway SQL Server 2022 Docker container
-  ([backend/docker-compose.test.yml](../backend/docker-compose.test.yml), host port 14333, SQL
-  auth), selected via `TEST_DB_CONNECTION_STRING` set only by `vitest.config.js`. Details in
-  `Tech-Backend.md` §9.
-- **E2E database:** a second throwaway SQL Server 2022 container for Playwright
-  ([frontend/e2e/docker-compose.e2e.yml](../frontend/e2e/docker-compose.e2e.yml), host port 14334,
-  database `LazarOS_E2E`, SQL auth), created and schema-loaded per run by
-  `frontend/e2e/run-e2e.mjs` and removed with `down -v`. Separate from the test DB on 14333.
-  Details in `Tech-Frontend.md` §9.
+- **Test database:** a separate PostgreSQL database `LazarOS_Test` on the same server as dev,
+  selected via `DATABASE_URL` set to `TEST_DATABASE_URL` by `vitest.config.js`. No Docker.
+  Details in `Tech-Backend.md` §9.
+- **E2E database:** a separate PostgreSQL database `LazarOS_E2E` on the same server, created and
+  schema-loaded (tables + indexes only) per run by
+  [frontend/e2e/run-e2e.mjs](../frontend/e2e/run-e2e.mjs). Separate from the dev and test
+  databases. Details in `Tech-Frontend.md` §9.
 - **Query style:** every call goes through `pool.query(text, params)` with `$1…$n` positional
   parameters, never string interpolation. This is the SQL-injection boundary (PRD §6).
 
@@ -156,14 +154,15 @@ Vite picks any free port starting at 5173; the backend CORS allowlist accepts an
 [backend/db/schema.sql](../backend/db/schema.sql) once against your PostgreSQL database with
 `psql` (`psql "$DATABASE_URL" -f db/schema.sql` from `backend/`).
 
-Backend tests (requires Docker; starts and removes the test database container itself):
+Backend tests (against the local PostgreSQL server; `globalSetup` creates `LazarOS_Test` if it
+is missing):
 
 ```bash
 cd backend && npm test
 ```
 
-End-to-end tests (Playwright; requires Docker, starts the e2e database, backend and frontend,
-and removes the database container itself; first run needs `npx playwright install chromium`):
+End-to-end tests (Playwright boots the backend and frontend; `run-e2e.mjs` prepares the
+`LazarOS_E2E` database first; first run needs `npx playwright install chromium`):
 
 ```bash
 cd frontend && npm run test:e2e
@@ -184,9 +183,9 @@ script itself.
 - **One pinned test per tier, no coverage threshold.** The backend has `tests/dashboard.test.js`;
   the frontend has `src/features/tasks/components/TaskCard.test.tsx`. Backfilling is future task
   work; `refactor-02` only installed the frameworks and added one test each.
-- **One shared SQL Server pool, Windows auth, drop-recreate schema.** This is a
-  single-developer, single-machine setup. Moving to env-based config and real migrations is a
-  tracked refactor campaign, not a hidden assumption.
+- **One shared PostgreSQL pool, env-driven `DATABASE_URL`, drop-recreate schema.** This is a
+  single-developer setup. Replacing the drop-recreate script with real migrations remains a
+  tracked concern.
 - **No rate limiting, no CSRF tokens, no account lockout.** `SameSite=Strict` on the JWT cookie
   is the only CSRF mitigation ([generateToken.js:10](../backend/utils/generateToken.js)). PRD §6
   documents the security posture; expanding it is out of scope.

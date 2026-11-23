@@ -11,6 +11,6 @@ getPool()
     });
   })
   .catch((err) => {
-    console.error("Failed to connect to SQL Server:", err.message);
+    console.error("Failed to connect to the database:", err.message);
     process.exit(1);
   });

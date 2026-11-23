@@ -2,6 +2,12 @@ import pg from "pg";
 
 const { Pool } = pg;
 
+// DATE (OID 1082): return a UTC-midnight Date so a `date` serializes to
+// 'YYYY-MM-DDT00:00:00.000Z' (matching the previous SQL Server behaviour) and stays
+// date-only. Without this, pg parses dates at LOCAL midnight and the serialized value can
+// slip to the previous day on a non-UTC host (Tech-Backend §8).
+pg.types.setTypeParser(1082, (v) => (v === null ? null : new Date(`${v}T00:00:00.000Z`)));
+
 let poolPromise = null;
 
 // One shared pg.Pool for the whole process, built from DATABASE_URL (Tech §2, D-016).
@@ -44,8 +50,3 @@ export async function closePool() {
     /* the pool never connected; nothing to close */
   }
 }
-
-// Transitional no-op kept only so the not-yet-ported controllers can still
-// `import { sql } from "../config/db.js"` while R04.2 lands ahead of R04.4.
-// Removed together with those imports when the queries are ported (R04.4).
-export const sql = {};

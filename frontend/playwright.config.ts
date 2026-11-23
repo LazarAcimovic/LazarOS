@@ -1,12 +1,12 @@
 import { defineConfig } from "@playwright/test";
 import {
   E2E_BACKEND_PORT,
-  E2E_DB_CONNECTION_STRING,
+  E2E_DATABASE_URL,
   E2E_FRONTEND_PORT,
   E2E_JWT_SECRET,
 } from "./e2e/e2eConfig.mjs";
 
-// Run via `npm run test:e2e` (e2e/run-e2e.mjs), which brings the throwaway database up first.
+// Run via `npm run test:e2e` (e2e/run-e2e.mjs), which prepares the e2e database first.
 // The webServers below are started by Playwright; the backend needs the database already up.
 const frontendUrl = `http://localhost:${E2E_FRONTEND_PORT}`;
 
@@ -32,7 +32,7 @@ export default defineConfig({
       env: {
         PORT: String(E2E_BACKEND_PORT),
         JWT_SECRET: E2E_JWT_SECRET,
-        TEST_DB_CONNECTION_STRING: E2E_DB_CONNECTION_STRING,
+        DATABASE_URL: E2E_DATABASE_URL,
       },
     },
     {

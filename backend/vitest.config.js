@@ -1,8 +1,5 @@
 import { defineConfig } from "vitest/config";
-import {
-  TEST_DB_NAME,
-  TEST_DB_CONNECTION_STRING,
-} from "./tests/setup/testDbConfig.js";
+import { TEST_DATABASE_URL } from "./tests/setup/testDbConfig.js";
 
 export default defineConfig({
   test: {
@@ -12,8 +9,9 @@ export default defineConfig({
     testTimeout: 30000,
     globalSetup: ["./tests/setup/globalSetup.js"],
     env: {
-      DB_NAME: TEST_DB_NAME,
-      TEST_DB_CONNECTION_STRING,
+      // config/db.js reads DATABASE_URL; point it at the test database so tests never
+      // touch the dev database (LazarOS).
+      DATABASE_URL: TEST_DATABASE_URL,
       JWT_SECRET: "lazaros-test-jwt-secret-not-for-production",
     },
   },

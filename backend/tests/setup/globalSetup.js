@@ -1,36 +1,26 @@
-import sql from "mssql/msnodesqlv8.js";
-import {
-  TEST_DB_NAME,
-  TEST_MASTER_CONNECTION_STRING,
-} from "./testDbConfig.js";
-
-const MAX_WAIT_MS = 120000;
-const RETRY_MS = 2000;
+import pg from "pg";
+import { TEST_DB_NAME, MAINTENANCE_URL } from "./testDbConfig.js";
 
 // Guarantees the empty test database exists. Tables are each suite's job (beforeAll).
 export default async function setup() {
-  const deadline = Date.now() + MAX_WAIT_MS;
-  let lastErr;
-  while (Date.now() < deadline) {
-    let pool;
-    try {
-      pool = await new sql.ConnectionPool({
-        connectionString: TEST_MASTER_CONNECTION_STRING,
-      }).connect();
-      await pool
-        .request()
-        .query(
-          `IF DB_ID('${TEST_DB_NAME}') IS NULL CREATE DATABASE [${TEST_DB_NAME}];`
-        );
-      await pool.close();
-      return;
-    } catch (err) {
-      lastErr = err;
-      if (pool) await pool.close().catch(() => {});
-      await new Promise((r) => setTimeout(r, RETRY_MS));
-    }
+  const client = new pg.Client({ connectionString: MAINTENANCE_URL });
+  try {
+    await client.connect();
+  } catch (err) {
+    throw new Error(
+      `Cannot reach PostgreSQL to prepare the test database (${MAINTENANCE_URL.replace(/:[^:@/]*@/, ":****@")}): ${err.message}`
+    );
   }
-  throw new Error(
-    `Test database container not reachable on localhost,14333: ${lastErr?.message}`
-  );
+  try {
+    const { rowCount } = await client.query(
+      "select 1 from pg_database where datname = $1",
+      [TEST_DB_NAME]
+    );
+    if (rowCount === 0) {
+      // TEST_DB_NAME is our own config value, never user input; identifiers can't be parameterised.
+      await client.query(`CREATE DATABASE "${TEST_DB_NAME.replace(/"/g, '""')}"`);
+    }
+  } finally {
+    await client.end();
+  }
 }

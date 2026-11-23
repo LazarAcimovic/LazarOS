@@ -67,7 +67,7 @@ Defined in [backend/db/schema.sql](../backend/db/schema.sql).
 
 - `tasks.user_id → profiles.id` — foreign key, no cascade declared. Deleting a profile would
   fail with a FK violation if any task rows exist; there is no API path that deletes a profile.
-- **Hard delete is never performed.** `DELETE /api/tasks/:id` sets `is_deleted = 1`
+- **Hard delete is never performed.** `DELETE /api/tasks/:id` sets `is_deleted = true`
   ([taskController.js:239-241](../backend/controllers/taskController.js)); the row is kept
   forever. Restore clears the flag ([taskController.js:264-265](../backend/controllers/taskController.js)).
 
@@ -129,7 +129,7 @@ Case table — one row per state the query must classify:
 |---|---|---|---|---|
 | Overdue pending | `pending` | `<` | — | `overdue` |
 | Due today | `pending` | `=` | — | `today` |
-| Future pending | `pending` | `>` | — | excluded by `due_date <= @today` |
+| Future pending | `pending` | `>` | — | excluded by `due_date <= $2::date` |
 | Completed today | `completed` | any | `=` | `completed_today` |
 | Completed earlier | `completed` | any | `<` | excluded |
 | Completed later day | `completed` | any | `>` | excluded (would not occur in practice) |

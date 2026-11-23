@@ -238,15 +238,16 @@ Shared task fixtures (`makeTask`, `makeDashboardTask`, `localDate`) live in
 
 ### End-to-end (Playwright)
 
-Run with `cd frontend && npm run test:e2e` (requires Docker; first run needs
-`npx playwright install chromium`). `e2e/run-e2e.mjs` mirrors the backend runner: it starts a
-throwaway SQL Server container (`e2e/docker-compose.e2e.yml`, host port 14334, database
-`LazarOS_E2E`, no volume), creates the database, applies the tables and indexes of
-`backend/db/schema.sql` (sections 3-5, no seed), runs `playwright test`, and always runs
-`down -v` afterwards. Playwright's `webServer` array (`playwright.config.ts`) then starts the
-backend on port 5001 (`TEST_DB_CONNECTION_STRING` pointing at the e2e container, `JWT_SECRET`)
-and Vite on port 5174 with `VITE_API_URL` set to `http://localhost:5001/api` (process env beats
-`.env.development`). Specs live in `frontend/e2e/` and are excluded from Vitest. Ports and
-credentials are defined once in `e2e/e2eConfig.mjs`. The e2e stack never touches the dev database
-or the backend test database (14333). Journeys: `smoke.spec.ts` (register, land on Today);
-`journeys.spec.ts` (create today + yesterday task with overdue badge; complete then browser clock +1 day via `page.clock.install` drops it from the dashboard; delete, Archive, restore; logout and Back stay on `/login`).
+Run with `cd frontend && npm run test:e2e` (first run needs `npx playwright install chromium`).
+No Docker. `e2e/run-e2e.mjs` prepares a dedicated **PostgreSQL** database `LazarOS_E2E` on the
+local server (created if missing via the maintenance `postgres` database), applies the tables and
+indexes of `backend/db/schema.sql` (the DDL above the seed banner; the drop-recreate resets them
+each run), then runs `playwright test`. Playwright's `webServer` array (`playwright.config.ts`)
+starts the backend on port 5001 (`DATABASE_URL` pointing at `LazarOS_E2E`, plus `JWT_SECRET`) and
+Vite on port 5174 with `VITE_API_URL` set to `http://localhost:5001/api` (process env beats
+`.env.development`). Specs live in `frontend/e2e/` and are excluded from Vitest. Ports,
+credentials and the connection are defined once in `e2e/e2eConfig.mjs`. The e2e database is
+separate from the dev and backend test databases. Journeys: `smoke.spec.ts` (register, land on
+Today); `journeys.spec.ts` (create today + yesterday task with overdue badge; complete then
+browser clock +1 day via `page.clock.install` drops it from the dashboard; delete, Archive,
+restore; logout and Back stay on `/login`).

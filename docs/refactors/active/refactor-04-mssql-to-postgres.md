@@ -120,13 +120,13 @@ Docs to update: Tech-Backend §2 if the query layer's shape changes.
 Verify: `cd backend && npm test` and `npm run test:e2e` are fully green against Postgres —
 dashboard buckets, `days_overdue` and every endpoint identical to the SQL Server baseline.
 
-- [ ] Every `pool.request().input(...).query(...)` becomes a parameterized `pool.query(text,
+- [x] Every `pool.request().input(...).query(...)` becomes a parameterized `pool.query(text,
       [params])` with `$1…$n` placeholders — no string interpolation of user input anywhere.
-- [ ] The dashboard query reproduces the DB §6 case table exactly (`::date`, `due_date <= $today`,
+- [x] The dashboard query reproduces the DB §6 case table exactly (`::date`, `due_date <= $today`,
       date subtraction for `days_overdue`).
-- [ ] `completed_at` transition logic and all timestamps use `now() at time zone 'utc'`; results
+- [x] `completed_at` transition logic and all timestamps use `now() at time zone 'utc'`; results
       match the UTC behaviour (Tech-Backend §8).
-- [ ] The full suite is green; no test was changed to accommodate a different result.
+- [x] The full suite is green; no test was changed to accommodate a different result.
 - Commit: `refactor(backend): port all queries to PostgreSQL`
 
 ---

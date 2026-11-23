@@ -80,11 +80,11 @@ A task is owned by exactly one profile. Nothing else is owned by anything.
 1. Edit opens a modal with the task preloaded.
 2. `PUT /api/tasks/:id` with any subset of `{ title, description, due_date, priority, status }`
    ([backend/validation/taskSchemas.js:10-19](../backend/validation/taskSchemas.js)).
-3. Server verifies ownership and that `is_deleted = 0`; else `404 Task not found`
-   ([taskController.js:167-179](../backend/controllers/taskController.js)).
-4. If `status` changes `pending → completed`, `completed_at = SYSUTCDATETIME()`. If
-   `completed → pending`, `completed_at = NULL` ([taskController.js:184-190](../backend/controllers/taskController.js)).
-5. `updated_at = SYSUTCDATETIME()` on every update.
+3. Server verifies ownership and that `is_deleted = false`; else `404 Task not found`
+   ([taskController.js](../backend/controllers/taskController.js)).
+4. If `status` changes `pending → completed`, `completed_at = now() at time zone 'utc'`. If
+   `completed → pending`, `completed_at = NULL` ([taskController.js](../backend/controllers/taskController.js)).
+5. `updated_at = now() at time zone 'utc'` on every update.
 
 ### 4.5 Complete and uncomplete
 
@@ -94,12 +94,12 @@ there is **no** `PATCH /tasks/:id/complete` endpoint. The README still lists one
 
 ### 4.6 Delete and restore
 
-- `DELETE /api/tasks/:id` sets `is_deleted = 1` and `updated_at = SYSUTCDATETIME()`
-  ([taskController.js:233-252](../backend/controllers/taskController.js)). The row is never
+- `DELETE /api/tasks/:id` sets `is_deleted = true` and `updated_at = now() at time zone 'utc'`
+  ([taskController.js](../backend/controllers/taskController.js)). The row is never
   removed from the database.
-- `PUT /api/tasks/:id/restore` clears `is_deleted` ([taskController.js:257-277](../backend/controllers/taskController.js)).
+- `PUT /api/tasks/:id/restore` clears `is_deleted` ([taskController.js](../backend/controllers/taskController.js)).
   README lists this as PATCH; see `task-01`.
-- The Archive page lists all `is_deleted = 1` rows for the user. Only restore is available
+- The Archive page lists all `is_deleted = true` rows for the user. Only restore is available
   from there — no edit, no complete, no hard-delete.
 
 ### 4.7 Dashboard — Today
@@ -111,16 +111,16 @@ there is **no** `PATCH /tasks/:id/complete` endpoint. The README still lists one
 3. **Overdue** = `pending` tasks with `due_date < today`. They stay on the dashboard every day
    until completed. This is the central product rule — see §4.8.
 4. **Today** = `pending` tasks with `due_date = today`.
-5. **Completed today** = `completed` tasks with `CAST(completed_at AS DATE) = today`.
-6. The server does not use `GETDATE()` for classification. `today` comes from the client's
+5. **Completed today** = `completed` tasks with `(completed_at AT TIME ZONE 'utc')::date = today`.
+6. The server does not use `now()` or the server clock for classification. `today` comes from the client's
    local date, so a task created in New York at 23:00 and reopened in Tokyo does not slip a
    day.
 
 ### 4.8 The overdue rule (central product rule)
 
 > **A task never disappears because its due date passed.** As long as its `status = 'pending'`
-> and `is_deleted = 0`, it appears in the Overdue section of Today every day, showing its
-> original `due_date` and `DATEDIFF(DAY, due_date, today)` as a "N days overdue" badge.
+> and `is_deleted = false`, it appears in the Overdue section of Today every day, showing its
+> original `due_date` and `today - due_date` (in days) as a "N days overdue" badge.
 
 Terminal transitions out of Overdue:
 
@@ -145,7 +145,7 @@ date-equality filter in memory, then paginates at `PAGE_SIZE = 10`
 
 ### 4.11 Archive
 
-`GET /api/tasks/archive` — all `is_deleted = 1` tasks for the user, ordered by `updated_at
+`GET /api/tasks/archive` — all `is_deleted = true` tasks for the user, ordered by `updated_at
 DESC` ([taskController.js:108-123](../backend/controllers/taskController.js)). Only restore is
 exposed from the UI.
 
@@ -195,7 +195,7 @@ From [frontend/src/config/constants.ts:1-9](../frontend/src/config/constants.ts)
 | `password` length | 8–20 | authSchemas.js:5-6 |
 | `password` content | ≥1 uppercase, ≥1 lowercase, ≥1 digit, ≥1 non-alphanumeric | authSchemas.js:7-10 |
 | `title` length | 1–255 | [backend/validation/taskSchemas.js:4](../backend/validation/taskSchemas.js) + schema `VARCHAR(255)` |
-| `description` length | 0–4000 | taskSchemas.js:5 (API contract; column is `VARCHAR(MAX)`, see Decisions D-005) |
+| `description` length | 0–4000 | taskSchemas.js:5 (API contract; column is `text`, see Decisions D-005) |
 | `due_date` format | `YYYY-MM-DD` (ISO 8601 calendar date, no time) | taskSchemas.js:6 |
 | `priority` values | `low` \| `medium` \| `high` | taskSchemas.js:7, schema CHECK constraint |
 | `status` values | `pending` \| `completed` | taskSchemas.js:18, schema CHECK constraint |
@@ -221,7 +221,7 @@ Server-stored timestamps (`created_at`, `updated_at`, `completed_at`) are UTC.
   theft risk.
 - `SameSite=Strict` on the cookie is the only CSRF defence. There are no CSRF tokens.
 - **`user_id` for every task operation comes from the verified session, never from the
-  request body or URL path.** Every task query filters on `user_id = @user_id`
+  request body or URL path.** Every task query filters on `user_id = $n`
   ([taskController.js, every handler](../backend/controllers/taskController.js)).
 - All SQL is **parameterized** through `pool.request().input(...)`; there is no string
   interpolation of user input anywhere.
@@ -235,7 +235,7 @@ Server-stored timestamps (`created_at`, `updated_at`, `completed_at`) are UTC.
 ## 8. Seeding
 
 The only seed path is [backend/db/schema.sql](../backend/db/schema.sql), which drops the two
-tables, recreates them, and inserts one profile plus twenty task rows anchored to `GETDATE()`.
+tables, recreates them, and inserts one profile plus twenty task rows anchored to `current_date`.
 See `DB.md` §4.
 
 There is no automated or per-test seeding. There is no admin UI for reseeding.

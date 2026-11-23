@@ -160,31 +160,24 @@ All backend tests live under `backend/tests/`. Each file is an ES module; import
 
 ### Mocking boundary
 
-**Do not mock `getPool`.** Every integration test hits a real SQL Server database. The dashboard
+**Do not mock `getPool`.** Every integration test hits a real PostgreSQL database. The dashboard
 query is the most important rule in the system and must be exercised end-to-end. Mocking the
 pool hides the exact query shape from the test.
 
 ### Test database
 
-Tests run against a throwaway SQL Server **Docker container** (`lazaros-test-db`, image
-`mcr.microsoft.com/mssql/server:2022-latest`, defined in `backend/docker-compose.test.yml`),
-never the developer's instance. It listens on host port **14333** (container 1433), has no
-volume, and uses SQL authentication (`sa`) because a Linux container cannot do Windows
-`Trusted_Connection`.
+Tests run against a separate **PostgreSQL database** (`LazarOS_Test`) on the same server as dev,
+never the dev database (`LazarOS`). No Docker — the local PostgreSQL server hosts both.
 
-- `cd backend && npm test` runs `backend/scripts/test-with-db.mjs`: `docker compose up -d --wait`, then
-  `vitest run`, then **always** `docker compose down -v` (even when tests fail), exiting with
-  vitest's exit code.
-- `npm run test:db:up` / `npm run test:db:down` start and remove the container by hand;
-  `npm run test:unit` runs vitest alone against an already-running container.
-- `vitest.config.js` sets `TEST_DB_CONNECTION_STRING` (defined once in
-  `tests/setup/testDbConfig.js`, `Database=LazarOS_Test`), `DB_NAME=LazarOS_Test` and a
-  test-only `JWT_SECRET`. `config/db.js` uses `TEST_DB_CONNECTION_STRING` when it is set and
-  otherwise builds the dev Windows-auth string; nothing outside the test setup sets it, so tests
-  never reach the dev database (`LazarOS`).
-- A vitest `globalSetup` (`tests/setup/globalSetup.js`) connects to the container's `master`,
-  retrying until SQL Server accepts connections, and runs `CREATE DATABASE LazarOS_Test` if it
-  is missing. Each test suite then drops and recreates the tables it needs in `beforeAll`.
+- `cd backend && npm test` runs `vitest run`.
+- `vitest.config.js` points `DATABASE_URL` at `TEST_DATABASE_URL` (defined once in
+  `tests/setup/testDbConfig.js`, default
+  `postgres://postgres:postgres@localhost:5432/LazarOS_Test`, overridable by the
+  `TEST_DATABASE_URL` env var) and sets a test-only `JWT_SECRET`. `config/db.js` reads
+  `DATABASE_URL`, so the suite connects to the test database and never reaches `LazarOS`.
+- A vitest `globalSetup` (`tests/setup/globalSetup.js`) connects to the server's maintenance
+  `postgres` database and runs `CREATE DATABASE "LazarOS_Test"` if it is missing. Each test
+  suite then drops and recreates the tables it needs in `beforeAll`.
 
 **Unit tests touch no database.** A unit test (schemas, the `today` guard, other pure logic) imports the schema or function directly and never imports `app.js`, `getPool` or `config/db.js`; anything that needs a database is an integration test.
 
@@ -201,5 +194,6 @@ volume, and uses SQL authentication (`sa`) because a Linux container cannot do W
 
 ### Rules that always apply
 
-- Do not assert against `completed_at` to the millisecond; compare `CAST(completed_at AS DATE)`.
+- Do not assert against `completed_at` to the millisecond; compare its UTC date
+  (`(completed_at AT TIME ZONE 'utc')::date`).
 - Do not reseed in parallel; the drop-recreate schema is not reentrant.

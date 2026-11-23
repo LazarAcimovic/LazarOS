@@ -1,9 +1,19 @@
-// Single definition of the test-container connection (see docker-compose.test.yml).
-// SQL auth, because a Linux container cannot do Windows Trusted_Connection.
-const base =
-  "Driver={ODBC Driver 17 for SQL Server};Server=localhost,14333;" +
-  "Uid=sa;Pwd=LazarOS_Test_Pass123!;TrustServerCertificate=Yes;";
+// Single definition of the test-database connection. The suite runs against a separate
+// PostgreSQL database (default LazarOS_Test) on the same server as dev — never the dev
+// database. `vitest.config.js` points DATABASE_URL at TEST_DATABASE_URL so `config/db.js`
+// connects here; `globalSetup.js` uses MAINTENANCE_URL to create the database if missing.
+export const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  "postgres://postgres:postgres@localhost:5432/LazarOS_Test";
 
-export const TEST_DB_NAME = "LazarOS_Test";
-export const TEST_DB_CONNECTION_STRING = `${base}Database=${TEST_DB_NAME};`;
-export const TEST_MASTER_CONNECTION_STRING = `${base}Database=master;`;
+const url = new URL(TEST_DATABASE_URL);
+
+export const TEST_DB_NAME = decodeURIComponent(url.pathname.replace(/^\//, "")) || "LazarOS_Test";
+
+// The maintenance connection (the server's default `postgres` database) used only to
+// CREATE the test database; you cannot create a database while connected to it.
+export const MAINTENANCE_URL = (() => {
+  const u = new URL(TEST_DATABASE_URL);
+  u.pathname = "/postgres";
+  return u.toString();
+})();

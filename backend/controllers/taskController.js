@@ -1,5 +1,5 @@
 import asyncHandler from "../middleware/asyncHandler.js";
-import { getPool, sql } from "../config/db.js";
+import { getPool } from "../config/db.js";
 import { createTaskSchema, updateTaskSchema } from "../validation/taskSchemas.js";
 
 // @desc   Get dashboard (overdue, today, completed today)
@@ -13,42 +13,41 @@ export const getDashboard = asyncHandler(async (req, res) => {
   }
 
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .input("today", sql.Date, today)
-    .query(`
+  const result = await pool.query(
+    `
       SELECT
         id, title, description, due_date, priority, status,
         completed_at, created_at, updated_at,
         CASE
-          WHEN status = 'pending' AND due_date < @today THEN 'overdue'
-          WHEN status = 'pending' AND due_date = @today THEN 'today'
-          WHEN status = 'completed' AND CAST(completed_at AS DATE) = @today THEN 'completed_today'
+          WHEN status = 'pending'   AND due_date <  $2::date THEN 'overdue'
+          WHEN status = 'pending'   AND due_date =  $2::date THEN 'today'
+          WHEN status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date THEN 'completed_today'
           ELSE 'other'
         END AS section,
-        DATEDIFF(DAY, due_date, @today) AS days_overdue
+        ($2::date - due_date) AS days_overdue
       FROM tasks
-      WHERE user_id = @user_id
-        AND is_deleted = 0
+      WHERE user_id = $1
+        AND is_deleted = false
         AND (
-          (status = 'pending' AND due_date <= @today)
+          (status = 'pending'   AND due_date <= $2::date)
           OR
-          (status = 'completed' AND CAST(completed_at AS DATE) = @today)
+          (status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date)
         )
       ORDER BY
         CASE
-          WHEN status = 'pending' AND due_date < @today THEN 0
-          WHEN status = 'pending' AND due_date = @today THEN 1
+          WHEN status = 'pending' AND due_date < $2::date THEN 0
+          WHEN status = 'pending' AND due_date = $2::date THEN 1
           ELSE 2
         END,
         due_date ASC,
         priority DESC
-    `);
+    `,
+    [req.user.id, today]
+  );
 
-  const overdue = result.recordset.filter((t) => t.section === "overdue");
-  const todayTasks = result.recordset.filter((t) => t.section === "today");
-  const completedToday = result.recordset.filter(
+  const overdue = result.rows.filter((t) => t.section === "overdue");
+  const todayTasks = result.rows.filter((t) => t.section === "today");
+  const completedToday = result.rows.filter(
     (t) => t.section === "completed_today"
   );
 
@@ -60,18 +59,18 @@ export const getDashboard = asyncHandler(async (req, res) => {
 // @access Private
 export const getAllTasks = asyncHandler(async (req, res) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .query(`
+  const result = await pool.query(
+    `
       SELECT id, title, description, due_date, priority, status,
              completed_at, created_at, updated_at
       FROM tasks
-      WHERE user_id = @user_id AND is_deleted = 0
+      WHERE user_id = $1 AND is_deleted = false
       ORDER BY due_date ASC, created_at ASC
-    `);
+    `,
+    [req.user.id]
+  );
 
-  res.json(result.recordset);
+  res.json(result.rows);
 });
 
 // @desc   Get upcoming tasks (future pending, grouped by date)
@@ -85,22 +84,21 @@ export const getUpcoming = asyncHandler(async (req, res) => {
   }
 
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .input("today", sql.Date, today)
-    .query(`
+  const result = await pool.query(
+    `
       SELECT id, title, description, due_date, priority, status,
              completed_at, created_at, updated_at
       FROM tasks
-      WHERE user_id = @user_id
-        AND is_deleted = 0
+      WHERE user_id = $1
+        AND is_deleted = false
         AND status = 'pending'
-        AND due_date > @today
+        AND due_date > $2::date
       ORDER BY due_date ASC, priority DESC
-    `);
+    `,
+    [req.user.id, today]
+  );
 
-  res.json(result.recordset);
+  res.json(result.rows);
 });
 
 // @desc   Get archived tasks (soft-deleted)
@@ -108,18 +106,18 @@ export const getUpcoming = asyncHandler(async (req, res) => {
 // @access Private
 export const getArchive = asyncHandler(async (req, res) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .query(`
+  const result = await pool.query(
+    `
       SELECT id, title, description, due_date, priority, status,
              completed_at, created_at, updated_at
       FROM tasks
-      WHERE user_id = @user_id AND is_deleted = 1
+      WHERE user_id = $1 AND is_deleted = true
       ORDER BY updated_at DESC
-    `);
+    `,
+    [req.user.id]
+  );
 
-  res.json(result.recordset);
+  res.json(result.rows);
 });
 
 // @desc   Create a task
@@ -134,22 +132,17 @@ export const createTask = asyncHandler(async (req, res) => {
   const { title, description, due_date, priority } = parsed.data;
 
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .input("title", sql.VarChar, title)
-    .input("description", sql.VarChar, description ?? null)
-    .input("due_date", sql.Date, due_date)
-    .input("priority", sql.VarChar, priority)
-    .query(`
+  const result = await pool.query(
+    `
       INSERT INTO tasks (user_id, title, description, due_date, priority)
-      OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.title, INSERTED.description,
-             INSERTED.due_date, INSERTED.priority, INSERTED.status,
-             INSERTED.is_deleted, INSERTED.completed_at, INSERTED.created_at, INSERTED.updated_at
-      VALUES (@user_id, @title, @description, @due_date, @priority)
-    `);
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, user_id, title, description, due_date, priority, status,
+                is_deleted, completed_at, created_at, updated_at
+    `,
+    [req.user.id, title, description ?? null, due_date, priority]
+  );
 
-  res.status(201).json(result.recordset[0]);
+  res.status(201).json(result.rows[0]);
 });
 
 // @desc   Update a task
@@ -165,66 +158,56 @@ export const updateTask = asyncHandler(async (req, res) => {
   const pool = await getPool();
 
   // Verify ownership
-  const existing = await pool
-    .request()
-    .input("id", sql.UniqueIdentifier, req.params.id)
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .query(
-      "SELECT id, status FROM tasks WHERE id = @id AND user_id = @user_id AND is_deleted = 0"
-    );
+  const existing = await pool.query(
+    "SELECT id, status FROM tasks WHERE id = $1 AND user_id = $2 AND is_deleted = false",
+    [req.params.id, req.user.id]
+  );
 
-  if (existing.recordset.length === 0) {
+  if (existing.rows.length === 0) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  const current = existing.recordset[0];
+  const current = existing.rows[0];
   const data = parsed.data;
 
-  // Determine completed_at
-  let completedAtClause = "";
+  const sets = ["updated_at = now() at time zone 'utc'"];
+  const params = [];
+  const set = (col, val) => {
+    params.push(val);
+    sets.push(`${col} = $${params.length}`);
+  };
+
+  if (data.title !== undefined) set("title", data.title);
+  if ("description" in data) set("description", data.description ?? null);
+  if (data.due_date !== undefined) set("due_date", data.due_date);
+  if (data.priority !== undefined) set("priority", data.priority);
+  if (data.status !== undefined) set("status", data.status);
+
+  // Determine completed_at from the status transition.
   if (data.status === "completed" && current.status !== "completed") {
-    completedAtClause = ", completed_at = SYSUTCDATETIME()";
+    sets.push("completed_at = now() at time zone 'utc'");
   } else if (data.status === "pending" && current.status === "completed") {
-    completedAtClause = ", completed_at = NULL";
+    sets.push("completed_at = NULL");
   }
 
-  const req2 = pool.request();
-  req2.input("id", sql.UniqueIdentifier, req.params.id);
-  req2.input("user_id", sql.UniqueIdentifier, req.user.id);
+  params.push(req.params.id);
+  const idParam = params.length;
+  params.push(req.user.id);
+  const userParam = params.length;
 
-  const sets = ["updated_at = SYSUTCDATETIME()"];
-  if (data.title !== undefined) {
-    req2.input("title", sql.VarChar, data.title);
-    sets.push("title = @title");
-  }
-  if ("description" in data) {
-    req2.input("description", sql.VarChar, data.description ?? null);
-    sets.push("description = @description");
-  }
-  if (data.due_date !== undefined) {
-    req2.input("due_date", sql.Date, data.due_date);
-    sets.push("due_date = @due_date");
-  }
-  if (data.priority !== undefined) {
-    req2.input("priority", sql.VarChar, data.priority);
-    sets.push("priority = @priority");
-  }
-  if (data.status !== undefined) {
-    req2.input("status", sql.VarChar, data.status);
-    sets.push("status = @status");
-  }
+  const result = await pool.query(
+    `
+      UPDATE tasks
+      SET ${sets.join(", ")}
+      WHERE id = $${idParam} AND user_id = $${userParam} AND is_deleted = false
+      RETURNING id, user_id, title, description, due_date, priority, status,
+                is_deleted, completed_at, created_at, updated_at
+    `,
+    params
+  );
 
-  const result = await req2.query(`
-    UPDATE tasks
-    SET ${sets.join(", ")}${completedAtClause}
-    OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.title, INSERTED.description,
-           INSERTED.due_date, INSERTED.priority, INSERTED.status,
-           INSERTED.is_deleted, INSERTED.completed_at, INSERTED.created_at, INSERTED.updated_at
-    WHERE id = @id AND user_id = @user_id AND is_deleted = 0
-  `);
-
-  res.json(result.recordset[0]);
+  res.json(result.rows[0]);
 });
 
 // @desc   Soft-delete a task
@@ -232,18 +215,17 @@ export const updateTask = asyncHandler(async (req, res) => {
 // @access Private
 export const deleteTask = asyncHandler(async (req, res) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("id", sql.UniqueIdentifier, req.params.id)
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .query(`
+  const result = await pool.query(
+    `
       UPDATE tasks
-      SET is_deleted = 1, updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id
-      WHERE id = @id AND user_id = @user_id AND is_deleted = 0
-    `);
+      SET is_deleted = true, updated_at = now() at time zone 'utc'
+      WHERE id = $1 AND user_id = $2 AND is_deleted = false
+      RETURNING id
+    `,
+    [req.params.id, req.user.id]
+  );
 
-  if (result.recordset.length === 0) {
+  if (result.rows.length === 0) {
     res.status(404);
     throw new Error("Task not found");
   }
@@ -256,22 +238,20 @@ export const deleteTask = asyncHandler(async (req, res) => {
 // @access Private
 export const restoreTask = asyncHandler(async (req, res) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("id", sql.UniqueIdentifier, req.params.id)
-    .input("user_id", sql.UniqueIdentifier, req.user.id)
-    .query(`
+  const result = await pool.query(
+    `
       UPDATE tasks
-      SET is_deleted = 0, updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id, INSERTED.title, INSERTED.due_date, INSERTED.priority,
-             INSERTED.status, INSERTED.is_deleted, INSERTED.created_at, INSERTED.updated_at
-      WHERE id = @id AND user_id = @user_id AND is_deleted = 1
-    `);
+      SET is_deleted = false, updated_at = now() at time zone 'utc'
+      WHERE id = $1 AND user_id = $2 AND is_deleted = true
+      RETURNING id, title, due_date, priority, status, is_deleted, created_at, updated_at
+    `,
+    [req.params.id, req.user.id]
+  );
 
-  if (result.recordset.length === 0) {
+  if (result.rows.length === 0) {
     res.status(404);
     throw new Error("Task not found in archive");
   }
 
-  res.json(result.recordset[0]);
+  res.json(result.rows[0]);
 });

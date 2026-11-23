@@ -47,8 +47,8 @@ Concept → where its rules live:
 - **Overdue** — a `pending` task whose `due_date` is strictly before today. Rules: PRD §4.7–4.8.
 - **Today's date (for classification)** — the user's *local* calendar date, passed from the
   client as `today=YYYY-MM-DD`. Rules: PRD §4.7, Tech-Backend §8.
-- **Archive** — the collection of `is_deleted = 1` tasks for a user. Rules: PRD §4.11, DB §3.
-- **Soft delete** — setting `is_deleted = 1`; nothing is ever removed from the database.
+- **Archive** — the collection of `is_deleted = true` tasks for a user. Rules: PRD §4.11, DB §3.
+- **Soft delete** — setting `is_deleted = true`; nothing is ever removed from the database.
   Rules: PRD §4.6, Decisions D-011.
 - **Dashboard** — the Today screen composed of three sections: Overdue / Today / Completed
   Today. Rules: PRD §4.7.

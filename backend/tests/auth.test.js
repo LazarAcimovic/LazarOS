@@ -3,7 +3,7 @@ import supertest from "supertest";
 import jwt from "jsonwebtoken";
 import { randomUUID } from "crypto";
 import { app } from "../app.js";
-import { getPool, sql } from "../config/db.js";
+import { getPool, closePool } from "../config/db.js";
 
 // PRD §4.1 register, §4.2 login, §4.12 logout, §4.13 protect failures, §7 password never leaves.
 const PASSWORD = "Valid1Pass!";
@@ -21,28 +21,26 @@ const jwtCookie = (res) =>
 describe("auth surface", () => {
   beforeAll(async () => {
     const pool = await getPool();
-    await pool.request().query(`
-      IF OBJECT_ID('dbo.tasks',    'U') IS NOT NULL DROP TABLE dbo.tasks;
-      IF OBJECT_ID('dbo.profiles', 'U') IS NOT NULL DROP TABLE dbo.profiles;
+    await pool.query(`
+      DROP TABLE IF EXISTS tasks    CASCADE;
+      DROP TABLE IF EXISTS profiles CASCADE;
     `);
-    await pool.request().query(`
+    await pool.query(`
       CREATE TABLE profiles (
-        id         UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() PRIMARY KEY,
-        first_name VARCHAR(100)     NOT NULL,
-        last_name  VARCHAR(100)     NOT NULL,
-        email      VARCHAR(255)     NOT NULL UNIQUE,
-        password   VARCHAR(255)     NOT NULL,
-        created_at DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME()
+        id         uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+        first_name varchar(100) NOT NULL,
+        last_name  varchar(100) NOT NULL,
+        email      varchar(255) NOT NULL UNIQUE,
+        password   varchar(255) NOT NULL,
+        created_at timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
       );
     `);
   });
 
   afterAll(async () => {
     const pool = await getPool();
-    await pool.request().query(`
-      IF OBJECT_ID('dbo.profiles', 'U') IS NOT NULL DROP TABLE dbo.profiles;
-    `);
-    await sql.close();
+    await pool.query(`DROP TABLE IF EXISTS profiles CASCADE;`);
+    await closePool();
   });
 
   describe("POST /api/auth/register", () => {

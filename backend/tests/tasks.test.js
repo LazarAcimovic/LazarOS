@@ -3,7 +3,7 @@ import supertest from "supertest";
 import jwt from "jsonwebtoken";
 import { randomUUID } from "crypto";
 import { app } from "../app.js";
-import { getPool, sql } from "../config/db.js";
+import { getPool, closePool } from "../config/db.js";
 
 // PRD §4.3–§4.11 task surface, §4.13 missing `today`, §7 isolation; DB §6 dashboard cases.
 const TODAY = "2026-01-15";
@@ -33,31 +33,31 @@ const api = (user) => ({
 async function seedTask(userId, t) {
   const id = randomUUID();
   const pool = await getPool();
-  await pool
-    .request()
-    .input("id", sql.UniqueIdentifier, id)
-    .input("user_id", sql.UniqueIdentifier, userId)
-    .input("title", sql.VarChar, t.title)
-    .input("due_date", sql.Date, t.due_date)
-    .input("priority", sql.VarChar, t.priority || "medium")
-    .input("status", sql.VarChar, t.status || "pending")
-    .input("is_deleted", sql.Bit, t.is_deleted ? 1 : 0)
-    .input("completed_at", sql.DateTime2, t.completed_at ? new Date(t.completed_at) : null)
-    .input("created_at", sql.DateTime2, new Date(t.created_at || "2026-01-01T00:00:00.000Z"))
-    .query(`
-      INSERT INTO tasks (id, user_id, title, due_date, priority, status, is_deleted, completed_at, created_at)
-      VALUES (@id, @user_id, @title, @due_date, @priority, @status, @is_deleted, @completed_at, @created_at)
-    `);
+  await pool.query(
+    `INSERT INTO tasks (id, user_id, title, due_date, priority, status, is_deleted, completed_at, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      id,
+      userId,
+      t.title,
+      t.due_date,
+      t.priority || "medium",
+      t.status || "pending",
+      t.is_deleted ? true : false,
+      t.completed_at ? new Date(t.completed_at) : null,
+      new Date(t.created_at || "2026-01-01T00:00:00.000Z"),
+    ]
+  );
   return id;
 }
 
 async function dbRow(id) {
   const pool = await getPool();
-  const r = await pool
-    .request()
-    .input("id", sql.UniqueIdentifier, id)
-    .query(`SELECT user_id, title, status, is_deleted, completed_at FROM tasks WHERE id = @id`);
-  return r.recordset[0];
+  const r = await pool.query(
+    `SELECT user_id, title, status, is_deleted, completed_at FROM tasks WHERE id = $1`,
+    [id]
+  );
+  return r.rows[0];
 }
 
 const idsOf = (rows) => rows.map((r) => r.id.toLowerCase());
@@ -66,59 +66,56 @@ const titlesOf = (rows) => rows.map((r) => r.title);
 describe("task surface", () => {
   beforeAll(async () => {
     const pool = await getPool();
-    await pool.request().query(`
-      IF OBJECT_ID('dbo.tasks',    'U') IS NOT NULL DROP TABLE dbo.tasks;
-      IF OBJECT_ID('dbo.profiles', 'U') IS NOT NULL DROP TABLE dbo.profiles;
+    await pool.query(`
+      DROP TABLE IF EXISTS tasks    CASCADE;
+      DROP TABLE IF EXISTS profiles CASCADE;
     `);
-    await pool.request().query(`
+    await pool.query(`
       CREATE TABLE profiles (
-        id         UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() PRIMARY KEY,
-        first_name VARCHAR(100)     NOT NULL,
-        last_name  VARCHAR(100)     NOT NULL,
-        email      VARCHAR(255)     NOT NULL UNIQUE,
-        password   VARCHAR(255)     NOT NULL,
-        created_at DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME()
+        id         uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+        first_name varchar(100) NOT NULL,
+        last_name  varchar(100) NOT NULL,
+        email      varchar(255) NOT NULL UNIQUE,
+        password   varchar(255) NOT NULL,
+        created_at timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
       );
     `);
-    await pool.request().query(`
+    await pool.query(`
       CREATE TABLE tasks (
-        id           UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() PRIMARY KEY,
-        user_id      UNIQUEIDENTIFIER NOT NULL,
-        title        VARCHAR(255)     NOT NULL,
-        description  VARCHAR(MAX)     NULL,
-        due_date     DATE             NOT NULL,
-        priority     VARCHAR(10)      NOT NULL DEFAULT 'medium'
+        id           uuid         NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id      uuid         NOT NULL,
+        title        varchar(255) NOT NULL,
+        description  text         NULL,
+        due_date     date         NOT NULL,
+        priority     varchar(10)  NOT NULL DEFAULT 'medium'
                        CHECK (priority IN ('low','medium','high')),
-        status       VARCHAR(10)      NOT NULL DEFAULT 'pending'
+        status       varchar(10)  NOT NULL DEFAULT 'pending'
                        CHECK (status IN ('pending','completed')),
-        is_deleted   BIT              NOT NULL DEFAULT 0,
-        completed_at DATETIME2        NULL,
-        created_at   DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME(),
-        updated_at   DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT FK_tasks_profiles FOREIGN KEY (user_id) REFERENCES profiles(id)
+        is_deleted   boolean      NOT NULL DEFAULT false,
+        completed_at timestamptz  NULL,
+        created_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+        updated_at   timestamptz  NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+        CONSTRAINT "FK_tasks_profiles" FOREIGN KEY (user_id) REFERENCES profiles(id)
       );
     `);
 
     for (const [name, id] of Object.entries(users)) {
-      await pool
-        .request()
-        .input("id", sql.UniqueIdentifier, id)
-        .input("email", sql.VarChar, `${name}@lazaros.dev`)
-        .query(`
-          INSERT INTO profiles (id, first_name, last_name, email, password)
-          VALUES (@id, 'Test', 'User', @email, 'hashed')
-        `);
+      await pool.query(
+        `INSERT INTO profiles (id, first_name, last_name, email, password)
+         VALUES ($1, 'Test', 'User', $2, 'hashed')`,
+        [id, `${name}@lazaros.dev`]
+      );
       tokens[name] = jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: "1d" });
     }
   });
 
   afterAll(async () => {
     const pool = await getPool();
-    await pool.request().query(`
-      IF OBJECT_ID('dbo.tasks',    'U') IS NOT NULL DROP TABLE dbo.tasks;
-      IF OBJECT_ID('dbo.profiles', 'U') IS NOT NULL DROP TABLE dbo.profiles;
+    await pool.query(`
+      DROP TABLE IF EXISTS tasks    CASCADE;
+      DROP TABLE IF EXISTS profiles CASCADE;
     `);
-    await sql.close();
+    await closePool();
   });
 
   // ------------------------------------------------ Dashboard (DB §6, PRD §4.7/§4.8)
