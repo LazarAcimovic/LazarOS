@@ -223,3 +223,24 @@ checksums; its manifest is regenerated to microsecond precision **from the exist
 deterministically and with no live SQL Server, before reconcile. The regeneration and the import
 step both live in Tech §2; the shared canonical-form code is the single definition both the export
 and the reconcile use, so the three never drift.
+
+### 7.4 Reconciliation — the cutover proof
+
+[`backend/scripts/reconcile-postgres-data.mjs`](../backend/scripts/reconcile-postgres-data.mjs) is
+the one-off proof that the loaded Postgres data equals the backup (run from `backend` as
+`DATABASE_URL=<postgres url> node scripts/reconcile-postgres-data.mjs [backup-dir]`; it exits
+non-zero on any mismatch). It is not part of the permanent suite. It asserts, in order:
+
+1. **Row counts** — `profiles` and `tasks` each equal the manifest.
+2. **Content checksums** — the checksum recomputed from the loaded Postgres rows, and the one
+   recomputed from the CSVs, each equal the manifest's, table by table, plus the `overallChecksum`
+   (§7.3). Zero rows added, dropped or altered.
+3. **A field-by-field spot-check** of one known profile and all of its tasks across both engines.
+4. **Behavioural parity** — for every date present in the data, the Today dashboard buckets
+   (overdue / today / completed-today, with `days_overdue`) and the Archive for a real preserved
+   user match what the backup data implies (PRD §4.7, §4.8, §4.11) — proving the data behaves
+   identically, not merely that it copied.
+
+The reconcile recomputes the canonical form through the shared `canonical.mjs`, the same definition
+the manifest was built with; the manifest's microsecond checksums remain the recorded source of
+truth (§7.3).

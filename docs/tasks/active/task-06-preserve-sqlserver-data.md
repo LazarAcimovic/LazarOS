@@ -96,9 +96,9 @@ Verify: per-table counts and the content checksum match the 6.1 manifest exactly
 (email + hash) and its tasks reconcile field-by-field across engines; the Today dashboard for a
 real preserved user shows the same rows it did on SQL Server.
 
-- [ ] Postgres per-table counts and content checksums equal the 6.1 manifest — zero rows added,
+- [x] Postgres per-table counts and content checksums equal the 6.1 manifest — zero rows added,
       dropped or altered.
-- [ ] A spot-check reconciles a known profile and its tasks field-by-field across both engines.
-- [ ] The dashboard and archive for a real preserved user match the pre-migration output
+- [x] A spot-check reconciles a known profile and its tasks field-by-field across both engines.
+- [x] The dashboard and archive for a real preserved user match the pre-migration output
       (PRD §4.7, §4.8), proving the data behaves identically, not just that it copied.
 - Commit: `test(db): reconcile migrated Postgres data against the backup`
