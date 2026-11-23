@@ -242,9 +242,11 @@ There is no automated or per-test seeding. There is no admin UI for reseeding.
 
 ## 9. Deployment target
 
-Local development on Windows. The only configured production signal is `NODE_ENV=production`
-which flips the JWT cookie's `secure` flag to `true` ([generateToken.js:9](../backend/utils/generateToken.js)).
-There is no deployment target documented beyond that.
+Local development on Windows, against a local **PostgreSQL** database (the `pg` driver with an
+env-driven `DATABASE_URL`; see Tech §2 and DB). The only configured production signal is
+`NODE_ENV=production` which flips the JWT cookie's `secure` flag to `true`
+([generateToken.js:9](../backend/utils/generateToken.js)). There is no deployment target
+documented beyond that.
 
 ## 10. Out of scope
 

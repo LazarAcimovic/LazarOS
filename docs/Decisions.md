@@ -193,3 +193,40 @@ choices:
 migration vehicle; the export is portable but needs a tamper-evident parity test to be trusted;
 a checksum defined over an engine-neutral canonical form is the only way to assert byte-level
 fidelity across two different database engines.
+
+### D-016 — Database engine: SQL Server → PostgreSQL (the `pg` driver and the T-SQL → Postgres mapping)
+
+**Decided:** 2026-11-23 · **Status:** Accepted
+**Answer:** `refactor-04` replaces Microsoft SQL Server (`mssql`/`msnodesqlv8`) with PostgreSQL,
+accessed through the `pg` driver and an env-driven `DATABASE_URL`. The schema, the demo seed and
+every raw query move from T-SQL to the Postgres dialect with **no change to the API contract or
+any product rule** — the `refactor-03` behaviour suite is the proof and stays green through each
+subtask. No ORM is introduced here; that is `refactor-05`, which lands on top of this.
+
+The one-for-one type and function mapping:
+
+| SQL Server | PostgreSQL |
+|---|---|
+| `UNIQUEIDENTIFIER` | `uuid` |
+| `VARCHAR(MAX)` | `text` |
+| `VARCHAR(n)` | `varchar(n)` |
+| `BIT` (`0`/`1`) | `boolean` (`false`/`true`) |
+| `DATETIME2` | `timestamptz` |
+| `DATE` | `date` |
+| `NEWID()` | `gen_random_uuid()` (built into PostgreSQL 13+) |
+| `SYSUTCDATETIME()` | `now() at time zone 'utc'` |
+| `GETDATE()` for classification | never used — `today` stays the client param (D-013) |
+| `DATEDIFF(DAY, due_date, @today)` | `$today::date - due_date` (integer days) |
+| `CAST(completed_at AS DATE)` | `(completed_at AT TIME ZONE 'utc')::date` |
+| `@name` parameters | `$n` positional parameters |
+
+Each pooled connection is pinned to `timezone=UTC`, so the `now() at time zone 'utc'` stamps and
+the `completed_at` date extraction reproduce the SQL Server UTC wall-clock semantics on any host.
+
+**Lives in:** DB (header, §2, §4, §5, §6), Tech §1–§2, Tech-Backend §8
+**Why:** The `mssql`/`msnodesqlv8` driver is a native Windows-only driver whose connection was
+hardcoded to one machine (D-010), which blocked running the backend anywhere else. PostgreSQL
+with the pure-JS `pg` driver and a `DATABASE_URL` is cross-platform and env-configurable, closing
+that blocker and giving `refactor-05` (Prisma) a portable engine to introspect. The type mapping
+is one-for-one so the schema, data shapes and query results are identical; the UTC pinning keeps
+the one behaviour that could silently drift — date classification — exactly as it was.

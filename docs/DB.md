@@ -1,8 +1,8 @@
 # DB
 
-> Microsoft SQL Server, accessed through the `mssql`/`msnodesqlv8` driver. Raw parameterized
-> T-SQL, no ORM. Schema and seed in one file (`backend/db/schema.sql`), applied by running the
-> script once against a SQL Server instance.
+> PostgreSQL, accessed through the `pg` driver with an env-driven `DATABASE_URL`. Raw
+> parameterized SQL, no ORM. Schema and seed in one file (`backend/db/schema.sql`), applied by
+> running the script once against a PostgreSQL database (the engine switch is D-016).
 
 ## 1. ER overview
 
@@ -22,12 +22,12 @@ Defined in [backend/db/schema.sql:21-28](../backend/db/schema.sql).
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| `id` | `UNIQUEIDENTIFIER` | NO | `NEWID()` | PK |
-| `first_name` | `VARCHAR(100)` | NO | — | |
-| `last_name` | `VARCHAR(100)` | NO | — | |
-| `email` | `VARCHAR(255)` | NO | — | `UNIQUE` |
-| `password` | `VARCHAR(255)` | NO | — | bcrypt hash (cost 10, see PRD §6) |
-| `created_at` | `DATETIME2` | NO | `SYSUTCDATETIME()` | UTC |
+| `id` | `uuid` | NO | `gen_random_uuid()` | PK |
+| `first_name` | `varchar(100)` | NO | — | |
+| `last_name` | `varchar(100)` | NO | — | |
+| `email` | `varchar(255)` | NO | — | `UNIQUE` |
+| `password` | `varchar(255)` | NO | — | bcrypt hash (cost 10, see PRD §6) |
+| `created_at` | `timestamptz` | NO | `now() at time zone 'utc'` | UTC |
 
 Constraints: `PK(id)`, `UNIQUE(email)`.
 
@@ -37,17 +37,17 @@ Defined in [backend/db/schema.sql:32-47](../backend/db/schema.sql).
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| `id` | `UNIQUEIDENTIFIER` | NO | `NEWID()` | PK |
-| `user_id` | `UNIQUEIDENTIFIER` | NO | — | FK → `profiles(id)` |
-| `title` | `VARCHAR(255)` | NO | — | API caps at 255 (PRD §6) |
-| `description` | `VARCHAR(MAX)` | YES | — | API caps at 4000 (PRD §6; see Decisions D-005) |
-| `due_date` | `DATE` | NO | — | Date only, no time component (PRD §5) |
-| `priority` | `VARCHAR(10)` | NO | `'medium'` | `CHECK (priority IN ('low','medium','high'))` |
-| `status` | `VARCHAR(10)` | NO | `'pending'` | `CHECK (status IN ('pending','completed'))` |
-| `is_deleted` | `BIT` | NO | `0` | Soft-delete flag |
-| `completed_at` | `DATETIME2` | YES | — | Stamped UTC when `status` moves pending→completed |
-| `created_at` | `DATETIME2` | NO | `SYSUTCDATETIME()` | UTC |
-| `updated_at` | `DATETIME2` | NO | `SYSUTCDATETIME()` | UTC; updated by every write ([taskController.js:196](../backend/controllers/taskController.js)) |
+| `id` | `uuid` | NO | `gen_random_uuid()` | PK |
+| `user_id` | `uuid` | NO | — | FK → `profiles(id)` |
+| `title` | `varchar(255)` | NO | — | API caps at 255 (PRD §6) |
+| `description` | `text` | YES | — | API caps at 4000 (PRD §6; see Decisions D-005) |
+| `due_date` | `date` | NO | — | Date only, no time component (PRD §5) |
+| `priority` | `varchar(10)` | NO | `'medium'` | `CHECK (priority IN ('low','medium','high'))` |
+| `status` | `varchar(10)` | NO | `'pending'` | `CHECK (status IN ('pending','completed'))` |
+| `is_deleted` | `boolean` | NO | `false` | Soft-delete flag |
+| `completed_at` | `timestamptz` | YES | — | Stamped UTC when `status` moves pending→completed |
+| `created_at` | `timestamptz` | NO | `now() at time zone 'utc'` | UTC |
+| `updated_at` | `timestamptz` | NO | `now() at time zone 'utc'` | UTC; updated by every write ([taskController.js](../backend/controllers/taskController.js)) |
 
 Constraints: `PK(id)`, `FK_tasks_profiles FOREIGN KEY(user_id) REFERENCES profiles(id)`,
 `CHECK(priority IN (...))`, `CHECK(status IN (...))`.
@@ -73,51 +73,59 @@ Defined in [backend/db/schema.sql:51-54](../backend/db/schema.sql).
 
 ## 4. Seed data
 
-`backend/db/schema.sql:60-102` inserts one profile and twenty tasks:
+`backend/db/schema.sql` inserts one profile and twenty tasks after the drop-recreate:
 
 - One `profiles` row: `lazar@lazaros.dev` / `Password123!` (bcrypt hash hardcoded in
-  [schema.sql:70](../backend/db/schema.sql)), with id `11111111-1111-1111-1111-111111111111`.
-- Twenty `tasks` rows seeded relative to `GETDATE()` — five on today, five on each of the
-  three following days.
+  `backend/db/schema.sql`), with id `11111111-1111-1111-1111-111111111111`.
+- Twenty `tasks` rows anchored to `current_date` — five on today, five on each of the three
+  following days.
 
-The seed is time-sensitive (`DATEADD(DAY, N, @today)`), so re-running it reproduces the same
-dashboard experience on any date. It is intended as a one-shot setup script, not as a per-test
-fixture.
+The seed is date-anchored (`current_date + make_interval(days => N)`), so re-running it
+reproduces the same dashboard experience on any date. It is a one-shot setup script for fresh
+dev and test databases, not a per-test fixture. It is **not** the real-data cutover — preserving
+the live rows is a separate procedure (DB §7, D-015).
 
 ## 5. Migrations
 
 There is no migrations framework. The entire schema and seed live in one file
-(`backend/db/schema.sql`) that drops and recreates tables; see the `IF OBJECT_ID(...) DROP TABLE`
-guards on [schema.sql:16-17](../backend/db/schema.sql). This is listed as a known refactor
-candidate in `docs/refactors/active/index.md` (campaign `refactor-01`).
+(`backend/db/schema.sql`) that drops and recreates tables; see the
+`DROP TABLE IF EXISTS … CASCADE` guards in `backend/db/schema.sql` (`tasks` before `profiles`,
+so the foreign key does not block the drop). Replacing this with a real migration tool is a
+separate, tracked concern.
 
 ## 6. Query cheat-sheet
 
-The dashboard query is the hottest path. From [taskController.js:21-47](../backend/controllers/taskController.js):
+The dashboard query is the hottest path. From [taskController.js](../backend/controllers/taskController.js)
+(`$1` = `user_id`, `$2` = the client's `today`):
 
 ```sql
 SELECT id, title, description, due_date, priority, status,
        completed_at, created_at, updated_at,
        CASE
-         WHEN status = 'pending'   AND due_date <  @today THEN 'overdue'
-         WHEN status = 'pending'   AND due_date =  @today THEN 'today'
-         WHEN status = 'completed' AND CAST(completed_at AS DATE) = @today THEN 'completed_today'
+         WHEN status = 'pending'   AND due_date <  $2::date THEN 'overdue'
+         WHEN status = 'pending'   AND due_date =  $2::date THEN 'today'
+         WHEN status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date THEN 'completed_today'
          ELSE 'other'
        END AS section,
-       DATEDIFF(DAY, due_date, @today) AS days_overdue
+       ($2::date - due_date) AS days_overdue
 FROM tasks
-WHERE user_id = @user_id
-  AND is_deleted = 0
+WHERE user_id = $1
+  AND is_deleted = false
   AND (
-    (status = 'pending'   AND due_date <= @today)
+    (status = 'pending'   AND due_date <= $2::date)
     OR
-    (status = 'completed' AND CAST(completed_at AS DATE) = @today)
+    (status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date)
   )
 ```
 
+`days_overdue` is plain `date` subtraction, which yields an integer number of days (`0` for a
+task due today, positive once it is overdue). `completed_at` is a `timestamptz`; converting it
+`AT TIME ZONE 'utc'` before `::date` takes its UTC calendar date, matching the stored
+UTC wall clock (Tech-Backend §8).
+
 Case table — one row per state the query must classify:
 
-| Row state | `status` | `due_date` vs `@today` | `completed_at::date` vs `@today` | Falls in |
+| Row state | `status` | `due_date` vs `$2` | `(completed_at AT TIME ZONE 'utc')::date` vs `$2` | Falls in |
 |---|---|---|---|---|
 | Overdue pending | `pending` | `<` | — | `overdue` |
 | Due today | `pending` | `=` | — | `today` |
@@ -126,8 +134,8 @@ Case table — one row per state the query must classify:
 | Completed earlier | `completed` | any | `<` | excluded |
 | Completed later day | `completed` | any | `>` | excluded (would not occur in practice) |
 
-**Every query that touches `tasks` additionally filters by `user_id = @user_id` and (except
-archive/restore) `is_deleted = 0`.** That pair is the data-isolation invariant (PRD §6).
+**Every query that touches `tasks` additionally filters by `user_id = $n` and (except
+archive/restore) `is_deleted = false`.** That pair is the data-isolation invariant (PRD §6).
 
 ## 7. Data preservation across the engine migration
 

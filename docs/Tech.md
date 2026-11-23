@@ -35,8 +35,7 @@ From [backend/package.json](../backend/package.json):
 | `cookie-parser` | `^1.4.6` | Parses the `jwt` cookie into `req.cookies` |
 | `jsonwebtoken` | `^9.0.2` | Signs and verifies the JWT in the cookie |
 | `bcrypt` | `^5.1.1` | Password hashing (cost 10) |
-| `mssql` | `^11.0.1` | SQL Server driver, used via the `msnodesqlv8` sub-module |
-| `msnodesqlv8` | `^5.2.3` | Windows native SQL Server driver |
+| `pg` | `^8.16.3` | PostgreSQL driver — one shared `Pool` built from `DATABASE_URL` |
 | `zod` | `^3.23.8` | Request validation |
 | `dotenv` | `^16.4.5` | Loads `.env` on startup |
 | `nodemon` (dev) | `^3.1.4` | Reload-on-change dev loop |
@@ -65,23 +64,22 @@ From [frontend/package.json](../frontend/package.json):
 
 ### Deliberately not installed
 
-- **No ORM.** All DB access is raw parameterized T-SQL through the shared pool. Adding one is
-  out of scope (PRD §10). Mentioned in the README as a conscious choice.
+- **No ORM.** All DB access is raw parameterized SQL (Postgres dialect) through the shared pool.
+  Adding one is `refactor-05` (Prisma), which lands on top of this migration.
 - **No linter or formatter.** No `eslint`/`prettier` config in either tier.
 - **No pre-commit tooling** before this documentation system (the hook in `.githooks/pre-commit`
   runs only the docs check; see §4).
 
 ## 2. Database tooling
 
-- **Driver:** `mssql` package imported as `mssql/msnodesqlv8.js` so it uses the native Windows
-  driver; see [backend/config/db.js:1](../backend/config/db.js).
+- **Driver:** the `pg` package; a single `pg.Pool` is built from `DATABASE_URL`; see
+  [backend/config/db.js](../backend/config/db.js).
 - **Connection:** single shared pool, created on first use and reused forever
-  ([db.js:12-25](../backend/config/db.js)). On failure, the promise is nulled so a later request
-  will retry.
-- **Connection string:** currently hardcoded for a specific developer machine
-  ([db.js:4-10](../backend/config/db.js)): ODBC Driver 17, server `DESKTOP-8R6Q0B4`, database
-  `LazarOS`, `Trusted_Connection=Yes`. This is Windows authentication. Moving it to env is
-  tracked as task `task-03`.
+  ([config/db.js](../backend/config/db.js)). On failure the cached promise is nulled so a later
+  request retries. Each pooled connection is pinned to `timezone=UTC` so the UTC time model holds
+  regardless of the server's own zone (Tech-Backend §8).
+- **Connection string:** `DATABASE_URL` (e.g. `postgres://user:pass@localhost:5432/LazarOS`),
+  read from the environment — nothing is hardcoded (the engine switch and env move are D-016).
 - **Schema file:** [backend/db/schema.sql](../backend/db/schema.sql). Drop-and-recreate; no
   migration framework. Documented in `DB.md` §5.
 - **Test database:** a throwaway SQL Server 2022 Docker container
@@ -93,7 +91,7 @@ From [frontend/package.json](../frontend/package.json):
   database `LazarOS_E2E`, SQL auth), created and schema-loaded per run by
   `frontend/e2e/run-e2e.mjs` and removed with `down -v`. Separate from the test DB on 14333.
   Details in `Tech-Frontend.md` §9.
-- **Query style:** every call goes through `pool.request().input(...).query(sql)` — named
+- **Query style:** every call goes through `pool.query(text, params)` with `$1…$n` positional
   parameters, never string interpolation. This is the SQL-injection boundary (PRD §6).
 
 ### Backup and data-preservation artifacts
@@ -152,9 +150,9 @@ cd frontend && npm install && npm run dev
 ```
 
 Vite picks any free port starting at 5173; the backend CORS allowlist accepts any
-`http://localhost(:port)?` origin. To seed the database, run
-[backend/db/schema.sql](../backend/db/schema.sql) once in SSMS or `sqlcmd` against a SQL Server
-instance.
+`http://localhost(:port)?` origin. Set `DATABASE_URL` (see §3), then seed the database by running
+[backend/db/schema.sql](../backend/db/schema.sql) once against your PostgreSQL database with
+`psql` (`psql "$DATABASE_URL" -f db/schema.sql` from `backend/`).
 
 Backend tests (requires Docker; starts and removes the test database container itself):
 

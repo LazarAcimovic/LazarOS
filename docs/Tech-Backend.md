@@ -132,15 +132,18 @@ Controllers set `res.status(4xx)` then `throw new Error(...)`; `asyncHandler` fo
 ## 8. Time handling
 
 - All server-side timestamps (`created_at`, `updated_at`, `completed_at`) are stamped
-  `SYSUTCDATETIME()` — UTC.
-- `due_date` is a pure `DATE`; the server never converts it to a time, so there is no timezone
+  `now() at time zone 'utc'` — UTC. Each pooled connection is pinned to `timezone=UTC`
+  ([config/db.js](../backend/config/db.js)), so `timestamptz` values store and read back as UTC
+  wall clocks regardless of the database server's own zone.
+- `due_date` is a pure `date`; the server never converts it to a time, so there is no timezone
   drift. **The classification of "today" uses the client-supplied `today=YYYY-MM-DD` query
   param, built from the user's local date.** The server validates the shape and passes it
-  through ([taskController.js:9-13](../backend/controllers/taskController.js)); it does not
-  recompute from `GETDATE()`.
-- `completed_at` is set with `SYSUTCDATETIME()` on the pending→completed transition and
+  through ([taskController.js](../backend/controllers/taskController.js)); it does not recompute
+  from `now()` or the server clock (D-013).
+- `completed_at` is set with `now() at time zone 'utc'` on the pending→completed transition and
   nulled on the reverse transition
-  ([taskController.js:186-190](../backend/controllers/taskController.js)).
+  ([taskController.js](../backend/controllers/taskController.js)). The dashboard compares its UTC
+  date with `(completed_at AT TIME ZONE 'utc')::date` (DB §6).
 
 ## 9. Testing
 
