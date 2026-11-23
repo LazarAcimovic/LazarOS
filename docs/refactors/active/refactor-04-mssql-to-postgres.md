@@ -22,13 +22,13 @@ alters a result is a defect, caught by the suite.
 
 #### Baseline — captured before step one
 
-| Measure | Before | After (fill in at the end) |
+| Measure | Before | After |
 |---|---|---|
-| database engine | SQL Server (`mssql`/`msnodesqlv8`) | |
-| connection | hardcoded, Windows auth (D-010) | |
-| `cd backend && npm test` | green on SQL Server | |
-| `npm run test:e2e` | green on SQL Server | |
-| schema source | `backend/db/schema.sql` (T-SQL) | |
+| database engine | SQL Server (`mssql`/`msnodesqlv8`) | PostgreSQL (`pg`) |
+| connection | hardcoded, Windows auth (D-010) | env-driven `DATABASE_URL` (D-016) |
+| `cd backend && npm test` | green on SQL Server | green on PostgreSQL (63 tests) |
+| `npm run test:e2e` | green on SQL Server | green on PostgreSQL (5 tests) |
+| schema source | `backend/db/schema.sql` (T-SQL) | `backend/db/schema.sql` (PostgreSQL DDL) |
 
 #### Out of scope
 
@@ -157,7 +157,7 @@ Docs to update: Tech-Backend §1 (layout block + `verified at <sha>`), Tech.md �
 table), DB §5.
 Verify: `node scripts/check-docs.mjs` passes; the suite stays green.
 
-- [ ] Layout and installed-package blocks regenerated from reality; `verified at <sha>` updated.
-- [ ] The baseline table's "After" column is filled in (engine = PostgreSQL, suites green).
-- [ ] No lingering mention of `mssql`/`msnodesqlv8` outside Decisions history.
+- [x] Layout and installed-package blocks regenerated from reality; `verified at <sha>` updated.
+- [x] The baseline table's "After" column is filled in (engine = PostgreSQL, suites green).
+- [x] No lingering mention of `mssql`/`msnodesqlv8` outside Decisions history.
 - Commit: `docs(tech): refresh layout and tooling after the Postgres migration`

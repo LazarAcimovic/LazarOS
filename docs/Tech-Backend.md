@@ -19,7 +19,7 @@
 
 ## 1. Project layout
 
-> verified at 82e2378
+> verified at f43a2b8
 
 ```
 backend/
