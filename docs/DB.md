@@ -153,8 +153,14 @@ particular the migration must keep:
   user's Archive (§3, PRD §4.11) and are carried like any other row.
 - **`completed_at`** — including its `NULL` for never-completed tasks, distinct from an empty
   value.
-- **Exact timestamps** — `created_at`, `updated_at`, `completed_at` to their full stored
-  `DATETIME2(7)` precision; no truncation to seconds or milliseconds.
+- **Timestamps** — `created_at`, `updated_at`, `completed_at` carried to **microsecond**
+  precision: the maximum a PostgreSQL `timestamptz` column (§2) stores and the maximum both
+  engines share. SQL Server `DATETIME2(7)` holds a 100-ns (7th) fractional digit that a
+  `timestamptz` cannot store, so the portable export's parity checksum operates at microsecond
+  precision, rounded half-to-even on the 100-ns tick exactly as the `timestamptz` cast rounds
+  (§7.3). The untouched native `.bak` (§7.2) keeps the original 100-ns values, so nothing is lost
+  from the record; only the Postgres target and its parity proof are bounded by what `timestamptz`
+  can physically hold. No truncation to seconds or milliseconds. (per D-017)
 - **bcrypt hashes** — `profiles.password` is copied byte-for-byte; it is never re-hashed,
   trimmed or re-encoded, or every user's login breaks.
 - **GUID identities** — `id` and `tasks.user_id` keep their exact values so the foreign-key
@@ -191,9 +197,13 @@ Parity is proven two ways, both recorded in the manifest and both reproducible o
   `NULL`, otherwise `V` + the UTF-8 byte length of the value + `:` + the value. Length-prefixing
   makes the stream unambiguous regardless of commas, quotes or newlines inside a value, and keeps
   `NULL` distinct from the empty string.
-- **Value rendering.** `DATETIME2` as ISO-8601 to full stored precision (SQL Server style 126,
-  e.g. `2026-11-22T08:30:15.1234567`); `DATE` as `YYYY-MM-DD`; `UNIQUEIDENTIFIER` lowercased;
-  `BIT` as `0`/`1`; text columns verbatim.
+- **Value rendering.** Timestamps as ISO-8601 at **microsecond** precision —
+  `YYYY-MM-DDTHH:MM:SS.ffffff`, UTC wall-clock, no offset — rounded half-to-even on the 100-ns
+  tick, which is exactly what a PostgreSQL `timestamptz` cast produces (§7.1, D-017). SQL Server's
+  native style-126 value carries a 7th fractional digit; the canonical form drops it to the shared
+  microsecond precision so the *identical* string is reproducible on both engines. `DATE` as
+  `YYYY-MM-DD`; `UNIQUEIDENTIFIER`/`uuid` lowercased 36-char; `BIT`/`boolean` as `0`/`1`; text
+  columns verbatim.
 - **Hash.** Terminate each row with `\n`, feed the whole byte stream into one **SHA-256** hash;
   the hex digest is the table checksum. The manifest's `overallChecksum` is the SHA-256 of
   `profiles:<count>:<checksum>\ntasks:<count>:<checksum>\n`.
@@ -207,3 +217,9 @@ The manifest produced by the backup is the **source of truth for reconciliation*
 `generatedAt`, the source server/database, `checksumAlgorithm` (`SHA-256`), the canonical-form
 description, and for each table its `rowCount`, column list and `checksum`, plus the
 `overallChecksum`. Reconciliation passes only when the Postgres figures equal it exactly.
+
+A backup captured before this microsecond canonicalization (D-017) carries native 100-ns
+checksums; its manifest is regenerated to microsecond precision **from the existing CSVs**,
+deterministically and with no live SQL Server, before reconcile. The regeneration and the import
+step both live in Tech §2; the shared canonical-form code is the single definition both the export
+and the reconcile use, so the three never drift.

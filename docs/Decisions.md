@@ -231,3 +231,30 @@ with the pure-JS `pg` driver and a `DATABASE_URL` is cross-platform and env-conf
 that blocker and giving `refactor-05` (Prisma) a portable engine to introspect. The type mapping
 is one-for-one so the schema, data shapes and query results are identical; the UTC pinning keeps
 the one behaviour that could silently drift — date classification — exactly as it was.
+
+### D-017 — Data-preservation parity is proven at microsecond precision (refines D-015)
+
+**Decided:** 2026-11-23 · **Status:** Accepted (refines D-015's precision clause)
+**Answer:** The content checksum that proves the SQL Server → Postgres data cutover (DB §7.3) is
+defined over timestamps rendered at **microsecond** precision — `YYYY-MM-DDTHH:MM:SS.ffffff`, UTC
+wall-clock, no offset, rounded half-to-even on the 100-ns tick — which is exactly what a
+PostgreSQL `timestamptz` cast produces. Reconciliation (6.3) passes when the Postgres figures
+equal a manifest regenerated at this same microsecond precision.
+
+**Why.** SQL Server `DATETIME2(7)` stores 100-ns (7 fractional digits); PostgreSQL `timestamptz`
+stores microseconds (6 digits). The two cannot both be byte-reproducible, so the original §7.1/
+§7.3 wording — "full `DATETIME2(7)` precision", checksum "reproduced identically in Postgres" —
+was unsatisfiable against the migrated schema (DB §2, `backend/db/schema.sql`, D-016). Evidence:
+the real backup holds `created_at = 2026-08-13T12:16:34.6102538`; loaded into a `timestamptz`
+column it reads back `…34.610254` (7th digit dropped, 6th rounded). Microsecond precision is the
+maximum both engines physically share, and it is reproducible identically on each, so it is the
+only precision at which a two-engine content checksum can actually assert fidelity.
+
+**No fidelity is lost from the record.** The native `.bak` (D-015, kept outside the repo) retains
+the original 100-ns values untouched; only the portable export's parity proof — and the Postgres
+target itself — are bounded by what `timestamptz` can hold. The canonicalization is deterministic
+and needs no live SQL Server: the existing 6.1 CSVs are re-manifested to microsecond checksums in
+JavaScript (the shared `backend/scripts/lib/canonical.mjs`), matching the Postgres cast exactly
+(verified across boundary and tie cases, including second-carry).
+
+**Lives in:** DB §7.1, §7.3, Tech §2
