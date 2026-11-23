@@ -19,7 +19,7 @@
 
 ## 1. Project layout
 
-> verified at: pending — stamped with the R06.8 commit sha (regenerated from the refactor-06 working tree).
+> verified at 991378c
 
 ```
 frontend/
@@ -32,7 +32,9 @@ frontend/
 └── src/
     ├── app/
     │   ├── App.tsx               # mounts providers + <RouterProvider/>
-    │   └── index.css             # Tailwind entry: theme + preflight + utilities imports, @theme tokens, .dark, base body
+    │   ├── index.css             # Tailwind entry: theme + preflight + utilities imports, @theme tokens, .dark, base body
+    │   └── styles/
+    │       └── global.css        # legacy BEM stylesheet (retired R06.7, D-020; not imported)
     ├── components/
     │   ├── ui/                   # shadcn primitives (button, input, dialog, badge, card, ...), generated, owned
     │   ├── layout/               # AppLayout

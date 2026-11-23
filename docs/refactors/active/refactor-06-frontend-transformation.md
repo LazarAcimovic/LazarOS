@@ -186,7 +186,7 @@ Not in scope: code.
 Docs to update: Tech-Frontend §1 (layout block + `verified at <sha>`), Tech.md §1.
 Verify: `node scripts/check-docs.mjs` passes; the suite and build stay green.
 
-- [ ] Layout block regenerated from a real directory listing; `verified at <sha>` updated.
+- [x] Layout block regenerated from a real directory listing; `verified at <sha>` updated.
 - [x] The baseline "After" column is filled in (React 19 / Tailwind / Vitest, suites green).
 - [x] No "not in use" claim contradicts the new stack; the refresh-token exclusion still reads
       correctly in §3.
