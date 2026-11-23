@@ -141,10 +141,10 @@ Verify: running the seed against a fresh Postgres yields one profile and twenty 
 to the current date; logging in with the seeded credentials succeeds and the dashboard shows the
 expected buckets.
 
-- [ ] One `profiles` row with the existing bcrypt hash and a fixed id; twenty `tasks` rows.
-- [ ] Dates anchored with `current_date + make_interval(days => n)` so re-running reproduces the
+- [x] One `profiles` row with the existing bcrypt hash and a fixed id; twenty `tasks` rows.
+- [x] Dates anchored with `current_date + make_interval(days => n)` so re-running reproduces the
       same dashboard on any day.
-- [ ] The seed is one-shot and not reentrant-sensitive beyond the documented drop-recreate.
+- [x] The seed is one-shot and not reentrant-sensitive beyond the documented drop-recreate.
 - Commit: `feat(db): PostgreSQL seed data`
 
 ---

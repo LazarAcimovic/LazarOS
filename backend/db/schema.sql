@@ -52,6 +52,42 @@ CREATE INDEX "IX_tasks_user_active" ON tasks(user_id, is_deleted, status, due_da
 -- ============================================================
 --   5. SEED DATA
 --   Login: email=lazar@lazaros.dev  password=Password123!
---   Ported to PostgreSQL in refactor-04 R04.5.
 -- ============================================================
--- (seed inserted here by R04.5)
+INSERT INTO profiles (id, first_name, last_name, email, password)
+VALUES (
+    '11111111-1111-1111-1111-111111111111',
+    'Lazar',
+    'Lazarevic',
+    'lazar@lazaros.dev',
+    '$2b$10$cxXcJsy8A2NQksG4ZqRVBeXwKmCP3qupWwKUx5VJIh2vshcJWKsxa'
+);
+
+INSERT INTO tasks (user_id, title, description, due_date, priority, status)
+VALUES
+/* ---- Today ---- */
+('11111111-1111-1111-1111-111111111111', 'Review Spring Security',         'Filters, JWT, method-level security',        current_date + make_interval(days => 0), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Work on thesis',                 'Write the architecture chapter',             current_date + make_interval(days => 0), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Review Java Streams',            'map / filter / collect / reduce',            current_date + make_interval(days => 0), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Reply to recruiter email',       NULL,                                         current_date + make_interval(days => 0), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Water the plants',               NULL,                                         current_date + make_interval(days => 0), 'low',    'pending'),
+
+/* ---- Day +1 ---- */
+('11111111-1111-1111-1111-111111111111', 'Review React Server Components', 'RSC vs client components, data fetching',    current_date + make_interval(days => 1), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Apply to Company X',             'Tailor CV and cover letter',                 current_date + make_interval(days => 1), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Review Spring Boot notes 21-51', NULL,                                         current_date + make_interval(days => 1), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Grocery shopping',               'Milk, eggs, coffee',                         current_date + make_interval(days => 1), 'low',    'pending'),
+('11111111-1111-1111-1111-111111111111', 'Gym leg day',                    NULL,                                         current_date + make_interval(days => 1), 'low',    'pending'),
+
+/* ---- Day +2 ---- */
+('11111111-1111-1111-1111-111111111111', 'Apply to 3 jobs',                'Backend / full-stack roles',                 current_date + make_interval(days => 2), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Review Java Collections',        'List, Set, Map, complexity',                 current_date + make_interval(days => 2), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Read Next.js documentation',     'App router + caching',                        current_date + make_interval(days => 2), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Call the bank',                  NULL,                                         current_date + make_interval(days => 2), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Plan weekend trip',              NULL,                                         current_date + make_interval(days => 2), 'low',    'pending'),
+
+/* ---- Day +3 ---- */
+('11111111-1111-1111-1111-111111111111', 'Review Spring Boot notes 21-51', 'Second pass (spaced repetition)',            current_date + make_interval(days => 3), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Refactor LazarOS backend',       'Split controllers, add validation',          current_date + make_interval(days => 3), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Review SQL indexing',            'Clustered vs non-clustered',                 current_date + make_interval(days => 3), 'medium', 'pending'),
+('11111111-1111-1111-1111-111111111111', 'Dentist appointment',            NULL,                                         current_date + make_interval(days => 3), 'high',   'pending'),
+('11111111-1111-1111-1111-111111111111', 'Backup laptop',                  NULL,                                         current_date + make_interval(days => 3), 'low',    'pending');
