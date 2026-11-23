@@ -234,9 +234,8 @@ Server-stored timestamps (`created_at`, `updated_at`, `completed_at`) are UTC.
 
 ## 8. Seeding
 
-The only seed path is [backend/db/schema.sql](../backend/db/schema.sql), which drops the two
-tables, recreates them, and inserts one profile plus twenty task rows anchored to `current_date`.
-See `DB.md` §4.
+The only seed path is the Prisma seed script (`prisma/seed.mjs`, run with `node prisma/seed.mjs`),
+which upserts one profile plus twenty task rows anchored to the current date. See `DB.md` §4.
 
 There is no automated or per-test seeding. There is no admin UI for reseeding.
 

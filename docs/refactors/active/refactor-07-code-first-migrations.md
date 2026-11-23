@@ -90,11 +90,13 @@ to R07.4's layout refresh; DB §4 if the seed contents are relocated.
 Verify: `npm run test:e2e` (5 green) and `cd backend && npm test` (63 green); a fresh dev DB can be
 built with `prisma migrate deploy` + `node prisma/seed.mjs`.
 
-- [ ] `frontend/e2e/run-e2e.mjs` drops the `public` schema and applies the migrations (no
-      `schema.sql` read).
-- [ ] `backend/prisma/seed.mjs` recreates the demo seed (one user + the task set) via the Prisma
-      client, with due dates anchored to the current date as before.
-- [ ] `backend/db/schema.sql` is deleted; no source doc or script references it any more.
+- [x] `frontend/e2e/run-e2e.mjs` drops the `public` schema and applies the migrations (no
+      `schema.sql` read); e2e is green (5).
+- [x] `backend/prisma/seed.mjs` recreates the demo seed (one user + the 20-task set) via the Prisma
+      client, due dates anchored to the current date; verified against `LazarOS_Test` (1 profile, 20 tasks).
+- [x] `backend/db/schema.sql` is deleted; the prose references (DB §2, PRD §8, Tech §5) are
+      repointed. The layout block is refreshed in R07.4; the only remaining mention is the historical
+      D-017 entry, kept per the append-only Decisions rule.
 - Commit: `chore: retire db/schema.sql for migrations + a prisma seed`
 
 ---

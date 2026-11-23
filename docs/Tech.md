@@ -205,7 +205,7 @@ script itself.
   work; `refactor-02` only installed the frameworks and added one test each.
 - **One shared PostgreSQL pool, env-driven `DATABASE_URL`.** This is a single-developer setup; the
   pool backs both the test schema setup and the Prisma adapter. Schema changes go through Prisma
-  Migrate (DB §5); the legacy drop-recreate `schema.sql` is retired by the code-first campaign.
+  Migrate (DB §5); the legacy drop-recreate `schema.sql` has been retired (code-first, D-019).
 - **No rate limiting, no CSRF tokens, no account lockout.** `SameSite=Strict` on the JWT cookie
   is the only CSRF mitigation ([generateToken.js:10](../backend/utils/generateToken.js)). PRD §6
   documents the security posture; expanding it is out of scope.

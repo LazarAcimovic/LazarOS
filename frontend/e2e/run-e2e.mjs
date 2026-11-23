@@ -2,7 +2,7 @@
 // Playwright (which boots backend + frontend against it). No Docker — a local PostgreSQL server
 // hosts a dedicated LazarOS_E2E database alongside the dev one.
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import pg from "pg";
@@ -14,18 +14,17 @@ import {
 
 const e2eDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(e2eDir, "..");
-const schemaPath = path.resolve(frontendDir, "..", "backend", "db", "schema.sql");
+const migrationsDir = path.resolve(frontendDir, "..", "backend", "prisma", "migrations");
 
-// schema.sql holds the table/index DDL followed by a seed section. The e2e database needs the
-// tables + indexes only (each journey registers its own user), so cut the file at the seed banner.
-function schemaDdlOnly() {
-  const full = readFileSync(schemaPath, "utf8");
-  const marker = full.indexOf("5. SEED DATA");
-  if (marker === -1) {
-    throw new Error("backend/db/schema.sql seed marker not found; update e2e/run-e2e.mjs");
-  }
-  const bannerStart = full.lastIndexOf("-- ===", marker);
-  return full.slice(0, bannerStart === -1 ? marker : bannerStart);
+// The Prisma migrations are the single schema source (code-first, D-019). The e2e database is
+// reset by applying them in order — the same SQL `prisma migrate deploy` runs. Directory names
+// sort into apply order (`0_init`, then timestamped ones); `migration_lock.toml` is a file.
+function migrationSqlFiles() {
+  return readdirSync(migrationsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .map((name) => path.join(migrationsDir, name, "migration.sql"));
 }
 
 async function prepareDatabase() {
@@ -44,11 +43,14 @@ async function prepareDatabase() {
     await admin.end();
   }
 
-  // Apply the tables + indexes; the drop-recreate guards reset them on every run.
+  // Reset to the migrated schema on every run (each journey registers its own user).
   const db = new pg.Client({ connectionString: E2E_DATABASE_URL });
   await db.connect();
   try {
-    await db.query(schemaDdlOnly());
+    await db.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;");
+    for (const file of migrationSqlFiles()) {
+      await db.query(readFileSync(file, "utf8"));
+    }
   } finally {
     await db.end();
   }
