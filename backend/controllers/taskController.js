@@ -1,6 +1,25 @@
 import asyncHandler from "../middleware/asyncHandler.js";
 import { getPool } from "../config/db.js";
+import { getPrisma } from "../config/prisma.js";
 import { createTaskSchema, updateTaskSchema } from "../validation/taskSchemas.js";
+
+// The column set the list endpoints return (user_id and is_deleted are intentionally omitted),
+// matching the previous raw SELECTs byte-for-byte.
+const listSelect = {
+  id: true,
+  title: true,
+  description: true,
+  due_date: true,
+  priority: true,
+  status: true,
+  completed_at: true,
+  created_at: true,
+  updated_at: true,
+};
+
+// due_date arrives as 'YYYY-MM-DD' (Zod). Store it as UTC midnight so the @db.Date column keeps
+// the date-only value and serializes back as 'YYYY-MM-DDT00:00:00.000Z' (Tech-Backend §8).
+const toDateOnly = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 
 // @desc   Get dashboard (overdue, today, completed today)
 // @route  GET /api/tasks/dashboard?today=YYYY-MM-DD
@@ -58,19 +77,14 @@ export const getDashboard = asyncHandler(async (req, res) => {
 // @route  GET /api/tasks
 // @access Private
 export const getAllTasks = asyncHandler(async (req, res) => {
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      SELECT id, title, description, due_date, priority, status,
-             completed_at, created_at, updated_at
-      FROM tasks
-      WHERE user_id = $1 AND is_deleted = false
-      ORDER BY due_date ASC, created_at ASC
-    `,
-    [req.user.id]
-  );
+  const prisma = await getPrisma();
+  const tasks = await prisma.tasks.findMany({
+    where: { user_id: req.user.id, is_deleted: false },
+    orderBy: [{ due_date: "asc" }, { created_at: "asc" }],
+    select: listSelect,
+  });
 
-  res.json(result.rows);
+  res.json(tasks);
 });
 
 // @desc   Get upcoming tasks (future pending, grouped by date)
@@ -83,41 +97,33 @@ export const getUpcoming = asyncHandler(async (req, res) => {
     throw new Error("Query param 'today' (YYYY-MM-DD) is required");
   }
 
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      SELECT id, title, description, due_date, priority, status,
-             completed_at, created_at, updated_at
-      FROM tasks
-      WHERE user_id = $1
-        AND is_deleted = false
-        AND status = 'pending'
-        AND due_date > $2::date
-      ORDER BY due_date ASC, priority DESC
-    `,
-    [req.user.id, today]
-  );
+  const prisma = await getPrisma();
+  const tasks = await prisma.tasks.findMany({
+    where: {
+      user_id: req.user.id,
+      is_deleted: false,
+      status: "pending",
+      due_date: { gt: toDateOnly(today) },
+    },
+    orderBy: [{ due_date: "asc" }, { priority: "desc" }],
+    select: listSelect,
+  });
 
-  res.json(result.rows);
+  res.json(tasks);
 });
 
 // @desc   Get archived tasks (soft-deleted)
 // @route  GET /api/tasks/archive
 // @access Private
 export const getArchive = asyncHandler(async (req, res) => {
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      SELECT id, title, description, due_date, priority, status,
-             completed_at, created_at, updated_at
-      FROM tasks
-      WHERE user_id = $1 AND is_deleted = true
-      ORDER BY updated_at DESC
-    `,
-    [req.user.id]
-  );
+  const prisma = await getPrisma();
+  const tasks = await prisma.tasks.findMany({
+    where: { user_id: req.user.id, is_deleted: true },
+    orderBy: { updated_at: "desc" },
+    select: listSelect,
+  });
 
-  res.json(result.rows);
+  res.json(tasks);
 });
 
 // @desc   Create a task
@@ -131,18 +137,18 @@ export const createTask = asyncHandler(async (req, res) => {
   }
   const { title, description, due_date, priority } = parsed.data;
 
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      INSERT INTO tasks (user_id, title, description, due_date, priority)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, user_id, title, description, due_date, priority, status,
-                is_deleted, completed_at, created_at, updated_at
-    `,
-    [req.user.id, title, description ?? null, due_date, priority]
-  );
+  const prisma = await getPrisma();
+  const task = await prisma.tasks.create({
+    data: {
+      user_id: req.user.id,
+      title,
+      description: description ?? null,
+      due_date: toDateOnly(due_date),
+      priority,
+    },
+  });
 
-  res.status(201).json(result.rows[0]);
+  res.status(201).json(task);
 });
 
 // @desc   Update a task
@@ -155,77 +161,55 @@ export const updateTask = asyncHandler(async (req, res) => {
     throw new Error(parsed.error.errors[0].message);
   }
 
-  const pool = await getPool();
+  const prisma = await getPrisma();
 
-  // Verify ownership
-  const existing = await pool.query(
-    "SELECT id, status FROM tasks WHERE id = $1 AND user_id = $2 AND is_deleted = false",
-    [req.params.id, req.user.id]
-  );
+  // Verify ownership (and that the task is not soft-deleted) before updating — a miss is a 404,
+  // which also gives cross-user access a 404 (never 403), per the isolation invariant (PRD §7).
+  const current = await prisma.tasks.findFirst({
+    where: { id: req.params.id, user_id: req.user.id, is_deleted: false },
+    select: { status: true },
+  });
 
-  if (existing.rows.length === 0) {
+  if (!current) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  const current = existing.rows[0];
-  const data = parsed.data;
+  const input = parsed.data;
+  const data = { updated_at: new Date() };
 
-  const sets = ["updated_at = now() at time zone 'utc'"];
-  const params = [];
-  const set = (col, val) => {
-    params.push(val);
-    sets.push(`${col} = $${params.length}`);
-  };
-
-  if (data.title !== undefined) set("title", data.title);
-  if ("description" in data) set("description", data.description ?? null);
-  if (data.due_date !== undefined) set("due_date", data.due_date);
-  if (data.priority !== undefined) set("priority", data.priority);
-  if (data.status !== undefined) set("status", data.status);
+  if (input.title !== undefined) data.title = input.title;
+  if ("description" in input) data.description = input.description ?? null;
+  if (input.due_date !== undefined) data.due_date = toDateOnly(input.due_date);
+  if (input.priority !== undefined) data.priority = input.priority;
+  if (input.status !== undefined) data.status = input.status;
 
   // Determine completed_at from the status transition.
-  if (data.status === "completed" && current.status !== "completed") {
-    sets.push("completed_at = now() at time zone 'utc'");
-  } else if (data.status === "pending" && current.status === "completed") {
-    sets.push("completed_at = NULL");
+  if (input.status === "completed" && current.status !== "completed") {
+    data.completed_at = new Date();
+  } else if (input.status === "pending" && current.status === "completed") {
+    data.completed_at = null;
   }
 
-  params.push(req.params.id);
-  const idParam = params.length;
-  params.push(req.user.id);
-  const userParam = params.length;
+  const task = await prisma.tasks.update({
+    where: { id: req.params.id },
+    data,
+  });
 
-  const result = await pool.query(
-    `
-      UPDATE tasks
-      SET ${sets.join(", ")}
-      WHERE id = $${idParam} AND user_id = $${userParam} AND is_deleted = false
-      RETURNING id, user_id, title, description, due_date, priority, status,
-                is_deleted, completed_at, created_at, updated_at
-    `,
-    params
-  );
-
-  res.json(result.rows[0]);
+  res.json(task);
 });
 
 // @desc   Soft-delete a task
 // @route  DELETE /api/tasks/:id
 // @access Private
 export const deleteTask = asyncHandler(async (req, res) => {
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      UPDATE tasks
-      SET is_deleted = true, updated_at = now() at time zone 'utc'
-      WHERE id = $1 AND user_id = $2 AND is_deleted = false
-      RETURNING id
-    `,
-    [req.params.id, req.user.id]
-  );
+  const prisma = await getPrisma();
+  const { count } = await prisma.tasks.updateMany({
+    where: { id: req.params.id, user_id: req.user.id, is_deleted: false },
+    data: { is_deleted: true, updated_at: new Date() },
+  });
 
-  if (result.rows.length === 0) {
+  if (count === 0) {
     res.status(404);
     throw new Error("Task not found");
   }
@@ -237,21 +221,30 @@ export const deleteTask = asyncHandler(async (req, res) => {
 // @route  PUT /api/tasks/:id/restore
 // @access Private
 export const restoreTask = asyncHandler(async (req, res) => {
-  const pool = await getPool();
-  const result = await pool.query(
-    `
-      UPDATE tasks
-      SET is_deleted = false, updated_at = now() at time zone 'utc'
-      WHERE id = $1 AND user_id = $2 AND is_deleted = true
-      RETURNING id, title, due_date, priority, status, is_deleted, created_at, updated_at
-    `,
-    [req.params.id, req.user.id]
-  );
+  const prisma = await getPrisma();
+  const { count } = await prisma.tasks.updateMany({
+    where: { id: req.params.id, user_id: req.user.id, is_deleted: true },
+    data: { is_deleted: false, updated_at: new Date() },
+  });
 
-  if (result.rows.length === 0) {
+  if (count === 0) {
     res.status(404);
     throw new Error("Task not found in archive");
   }
 
-  res.json(result.rows[0]);
+  const task = await prisma.tasks.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      title: true,
+      due_date: true,
+      priority: true,
+      status: true,
+      is_deleted: true,
+      created_at: true,
+      updated_at: true,
+    },
+  });
+
+  res.json(task);
 });

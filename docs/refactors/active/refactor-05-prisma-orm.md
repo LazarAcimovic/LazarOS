@@ -106,10 +106,13 @@ Not in scope: the dashboard query (R05.5). Changing ordering or filtering behavi
 Docs to update: Tech-Backend §2 if needed.
 Verify: `cd backend && npm test` — the tasks integration suite is green through Prisma.
 
-- [ ] Create / update / delete (soft) / restore / upcoming / all / archive go through
-      `prisma.tasks`; `user_id` still comes from the session, never the body (PRD §7).
-- [ ] `completed_at` transitions and `updated_at` stamping match the current behaviour.
-- [ ] Ordering (`due_date`, `created_at`, `updated_at`) and the `is_deleted` filter are preserved.
+- [x] Create / update / delete (soft) / restore / upcoming / all / archive go through
+      `prisma.tasks`; `user_id` still comes from the session, never the body (PRD §7). Cross-user
+      and soft-deleted targets return 404 via compound-`where` `updateMany`/`findFirst` guards.
+- [x] `completed_at` transitions and `updated_at` stamping match the current behaviour (set from
+      `new Date()`; bound as a `timestamptz` instant on the UTC-pinned connection).
+- [x] Ordering (`due_date`, `created_at`, `updated_at`) and the `is_deleted` filter are preserved
+      (Prisma `orderBy` compiles to the same SQL `ORDER BY`); the tasks integration suite is green.
 - Commit: `refactor(backend): port task CRUD and lists to Prisma`
 
 ---
