@@ -126,9 +126,10 @@ Docs to update: Tech-Backend §8 / DB §6 if the raw query text is relocated.
 Verify: `cd backend && npm test` and `npm run test:e2e` — the dashboard buckets and `days_overdue`
 are identical to the pre-Prisma baseline.
 
-- [ ] The dashboard runs through `prisma.$queryRaw` with parameters (never interpolation),
-      reproducing the DB §6 case table exactly.
-- [ ] The raw query is the only raw SQL left in the backend; every other path uses the client.
+- [x] The dashboard runs through `prisma.$queryRaw` with parameters (never interpolation),
+      reproducing the DB §6 case table exactly; backend suite + e2e are green.
+- [x] The raw query is the only raw SQL left in the backend; every other path uses the client
+      (`getPool` now serves only `config/prisma.js` and the test schema setup).
 - Commit: `refactor(backend): dashboard via parameterized $queryRaw`
 
 ---

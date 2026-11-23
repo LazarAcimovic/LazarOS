@@ -1,5 +1,4 @@
 import asyncHandler from "../middleware/asyncHandler.js";
-import { getPool } from "../config/db.js";
 import { getPrisma } from "../config/prisma.js";
 import { createTaskSchema, updateTaskSchema } from "../validation/taskSchemas.js";
 
@@ -31,44 +30,46 @@ export const getDashboard = asyncHandler(async (req, res) => {
     throw new Error("Query param 'today' (YYYY-MM-DD) is required");
   }
 
-  const pool = await getPool();
-  const result = await pool.query(
-    `
+  const prisma = await getPrisma();
+  const userId = req.user.id;
+
+  // The computed dashboard (DB §6) is the one path kept as raw SQL — the CASE-based `section`
+  // bucket and the `days_overdue` date subtraction are not expressible ergonomically in the Prisma
+  // query builder (D-018). It runs through `$queryRaw` as a tagged template, so every `${…}` is a
+  // BIND PARAMETER — never string interpolation — keeping it on the SQL-injection boundary
+  // (PRD §6). `${userId}::uuid` / `${today}::date` type the params to match the columns.
+  const rows = await prisma.$queryRaw`
       SELECT
         id, title, description, due_date, priority, status,
         completed_at, created_at, updated_at,
         CASE
-          WHEN status = 'pending'   AND due_date <  $2::date THEN 'overdue'
-          WHEN status = 'pending'   AND due_date =  $2::date THEN 'today'
-          WHEN status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date THEN 'completed_today'
+          WHEN status = 'pending'   AND due_date <  ${today}::date THEN 'overdue'
+          WHEN status = 'pending'   AND due_date =  ${today}::date THEN 'today'
+          WHEN status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = ${today}::date THEN 'completed_today'
           ELSE 'other'
         END AS section,
-        ($2::date - due_date) AS days_overdue
+        (${today}::date - due_date) AS days_overdue
       FROM tasks
-      WHERE user_id = $1
+      WHERE user_id = ${userId}::uuid
         AND is_deleted = false
         AND (
-          (status = 'pending'   AND due_date <= $2::date)
+          (status = 'pending'   AND due_date <= ${today}::date)
           OR
-          (status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = $2::date)
+          (status = 'completed' AND (completed_at AT TIME ZONE 'utc')::date = ${today}::date)
         )
       ORDER BY
         CASE
-          WHEN status = 'pending' AND due_date < $2::date THEN 0
-          WHEN status = 'pending' AND due_date = $2::date THEN 1
+          WHEN status = 'pending' AND due_date < ${today}::date THEN 0
+          WHEN status = 'pending' AND due_date = ${today}::date THEN 1
           ELSE 2
         END,
         due_date ASC,
         priority DESC
-    `,
-    [req.user.id, today]
-  );
+  `;
 
-  const overdue = result.rows.filter((t) => t.section === "overdue");
-  const todayTasks = result.rows.filter((t) => t.section === "today");
-  const completedToday = result.rows.filter(
-    (t) => t.section === "completed_today"
-  );
+  const overdue = rows.filter((t) => t.section === "overdue");
+  const todayTasks = rows.filter((t) => t.section === "today");
+  const completedToday = rows.filter((t) => t.section === "completed_today");
 
   res.json({ overdue, today: todayTasks, completed_today: completedToday });
 });
